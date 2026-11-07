@@ -162,9 +162,10 @@
     <select id="strain" aria-label="Sorte"></select>
     <div class="seg" id="forms" role="radiogroup" aria-label="Konsumform"></div>
     <div class="chips" id="chips">
-      <button data-g="0,1">0,1 g</button><button data-g="0,2">0,2 g</button>
-      <button data-g="0,3">0,3 g</button><button data-g="0,5">0,5 g</button>
+      <button data-m="0.5">½ ×</button><button data-m="1">1 ×</button>
+      <button data-m="2">2 ×</button><button data-m="3">3 ×</button>
     </div>
+    <p class="hint" id="unit" style="margin:-2px 2px 10px"></p>
     <div class="row">
       <input id="use" inputmode="decimal" placeholder="Menge in g" aria-label="Menge in Gramm">
       <input type="date" id="date" aria-label="Datum">
@@ -254,6 +255,10 @@
     <p class="hint">An Pausentagen ist dein Budget 0 g. Die Menge verteilt sich auf die übrigen Tage.</p>
   </div>
 
+  <h2>Menge pro Konsum</h2>
+  <div class="card" id="amounts"></div>
+  <p class="hint">Wird beim Erfassen automatisch eingetragen. Edibles: Gras pro Stück, z. B. 1 g auf 10 Stück = 0,1 g.</p>
+
   <h2>Sichtschutz</h2>
   <div class="card">
     <div class="line first"><span>PIN-Sperre</span><button id="pinBtn" onclick="togglePin()"></button></div>
@@ -304,6 +309,7 @@ const $ = q => document.querySelector(q);
 const $$ = q => document.querySelectorAll(q);
 let S = JSON.parse(localStorage.getItem(KEY) || 'null') || {};
 S = { strains: [], logs: [], until: '', breaks: [], pin: '', form: 'Joint', ...S };
+S.amounts = { Joint: 0.3, Bong: 0.1, Vaporizer: 0.15, Edible: 0.1, ...S.amounts }; // grams per unit
 
 const TITLES = { heute: 'Heute', bestand: 'Bestand', statistik: 'Statistik', einstellungen: 'Einstellungen' };
 const WEEK = [[1, 'Mo'], [2, 'Di'], [3, 'Mi'], [4, 'Do'], [5, 'Fr'], [6, 'Sa'], [0, 'So']];
@@ -369,6 +375,7 @@ function render() {
     || '<option value="">Noch keine Sorte im Bestand</option>';
   $('#forms').innerHTML = Object.keys(FORMS).map(f =>
     `<button role="radio" aria-checked="${f === S.form}" class="${f === S.form ? 'on' : ''}" data-f="${f}">${f}</button>`).join('');
+  $('#unit').textContent = `1 × ${S.form} = ${g(S.amounts[S.form])} · änderbar in den Einstellungen`;
   $('#todayLogs').innerHTML = [...todays].reverse()
     .map(l => logRow(l, new Date(l.id).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }))).join('')
     || '<p class="empty">Noch keine Einträge heute.</p>';
@@ -412,6 +419,9 @@ function render() {
   // Einstellungen
   $('#breaks').innerHTML = WEEK.map(([i, label]) =>
     `<button class="${S.breaks.includes(i) ? 'on' : ''}" aria-pressed="${S.breaks.includes(i)}" data-d="${i}">${label}</button>`).join('');
+  if (!$('#amounts').contains(document.activeElement)) // don't re-render under the user's cursor
+    $('#amounts').innerHTML = Object.keys(FORMS).map((f, i) => `<label class="line${i ? '' : ' first'}"><span>1 ${f}</span>
+      <span><input inputmode="decimal" data-a="${f}" value="${n(S.amounts[f])}" aria-label="Gramm pro ${f}" size="5"> g</span></label>`).join('');
   $('#pinBtn').textContent = S.pin ? 'Entfernen' : 'Einrichten';
   $('#pinBtn').classList.toggle('danger', !!S.pin);
 }
@@ -446,8 +456,15 @@ function renderMonth(t) {
 
 function shiftMonth(k) { const [y, m] = month.split('-').map(Number); month = iso(new Date(y, m - 1 + k, 1)).slice(0, 7); render(); }
 
-$('#chips').onclick = e => { if (e.target.dataset.g) $('#use').value = e.target.dataset.g; };
-$('#forms').onclick = e => { if (e.target.dataset.f) { S.form = e.target.dataset.f; save(); } };
+const fillAmount = (m = 1) => $('#use').value = n(S.amounts[S.form] * m);
+$('#chips').onclick = e => { if (e.target.dataset.m) fillAmount(+e.target.dataset.m); };
+$('#forms').onclick = e => { if (e.target.dataset.f) { S.form = e.target.dataset.f; save(); fillAmount(); } };
+$('#amounts').onchange = e => {
+  const x = num(e.target.value);
+  if (x > 0) { S.amounts[e.target.dataset.a] = x; fillAmount(); }
+  e.target.blur();
+  save();
+};
 $('#breaks').onclick = e => {
   const d = e.target.dataset.d;
   if (d == null) return;
@@ -502,8 +519,8 @@ function logUse() {
   s.grams = r3(s.grams - x);
   S.logs.push({ id: Date.now(), strainId: s.id, name: s.name, thc: s.thc, price: s.price || 0,
                 form: S.form, grams: x, date: $('#date').value || today() });
-  $('#use').value = '';
   save();
+  fillAmount();
 }
 
 function delLog(id) {
@@ -585,6 +602,7 @@ document.addEventListener('visibilitychange', () => {
 
 $('#date').value = today();
 render();
+fillAmount();
 if (S.pin) openLock('unlock');
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
