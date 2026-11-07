@@ -9,16 +9,20 @@
 <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
 <title>Kontingent</title>
 <style>
   :root {
     --bg: #f2f2f7; --card: #fff; --raised: #fff; --text: #111113; --muted: #6e6e73; --line: #e3e3e8;
-    --accent: #2f6b4f; --on-accent: #fff; --track: #e8e8ed; --danger: #c4372f;
+    --accent: #0b7a5e; --on-accent: #fff; --track: #e6eeeb; --danger: #c4372f;
+    /* data colours, from the ring of the app icon (darkened for contrast on white) */
+    --chart-top: #16a06e; --chart-bottom: #12937d; --chart: #139a76; --on-chart: #fff;
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
     :root { --bg: #000; --card: #1c1c1e; --raised: #3a3a3c; --text: #f2f2f7; --muted: #8e8e93; --line: #2c2c2e;
-            --accent: #5fb98a; --on-accent: #000; --track: #2c2c2e; --danger: #ff6b61; color-scheme: dark; }
+            --accent: #4ad9a1; --on-accent: #000; --track: #233130; --danger: #ff6b61; color-scheme: dark;
+            --chart-top: #75f2a4; --chart-bottom: #1fb9a1; --chart: #4ad9a1; --on-chart: #000; }
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body { margin: 0 auto; max-width: 560px; background: var(--bg); color: var(--text);
@@ -43,7 +47,7 @@
   .hero-num { font-size: 52px; font-weight: 600; letter-spacing: -.03em; margin: 4px 0 12px; }
   .over { color: var(--danger); }
   .meter { height: 4px; background: var(--track); border-radius: 2px; overflow: hidden; }
-  .meter > div { height: 100%; background: var(--accent); }
+  .meter > div { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--chart-bottom), var(--chart-top)); }
   .meter.over > div { background: var(--danger); }
   .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 20px 0 4px;
            padding-top: 16px; border-top: 1px solid var(--line); }
@@ -87,8 +91,9 @@
 
   .chart { display: flex; align-items: flex-end; gap: 8px; height: 120px; }
   .col { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 6px; }
-  .bar { width: 100%; background: var(--track); border-radius: 4px; min-height: 2px; }
-  .bar.today { background: var(--accent); }
+  .bar { width: 100%; border-radius: 4px; min-height: 2px; opacity: .45;
+         background: linear-gradient(to top, var(--chart-bottom), var(--chart-top)); }
+  .bar.today { opacity: 1; }
   .col span { font-size: 12px; color: var(--muted); }
   .foot { display: flex; justify-content: space-between; margin-top: 14px; padding-top: 12px;
           border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); }
@@ -99,7 +104,7 @@
   .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
   .cal-h { font-size: 11px; color: var(--muted); text-align: center; padding-bottom: 2px; }
   .cal-d { aspect-ratio: 1; display: grid; place-items: center; border-radius: 8px; font-size: 13px; background: var(--track); }
-  .cal-d.strong { color: var(--on-accent); font-weight: 600; }
+  .cal-d.strong { color: var(--on-chart); font-weight: 600; }
   .cal-d.today { box-shadow: inset 0 0 0 1.5px var(--text); }
   .cal-d.future { background: none; color: var(--muted); opacity: .5; }
 
@@ -463,7 +468,7 @@ function renderMonth(t) {
     const d = `${month}-${String(i).padStart(2, '0')}`, v = byDay[d] || 0, p = v ? Math.round(25 + 75 * v / max) : 0;
     if (!v && d <= t && d >= firstLog && S.logs.length) free++;
     cells += `<div class="cal-d${d === t ? ' today' : ''}${d > t ? ' future' : ''}${p > 55 ? ' strong' : ''}" title="${g(v)}"
-      ${p ? `style="background:color-mix(in srgb, var(--accent) ${p}%, var(--track))"` : ''}>${i}</div>`;
+      ${p ? `style="background:color-mix(in srgb, var(--chart) ${p}%, var(--track))"` : ''}>${i}</div>`;
   }
   $('#cal').innerHTML = cells;
   $('#monthLabel').textContent = new Date(y, m - 1, 1).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
