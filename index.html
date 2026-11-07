@@ -37,6 +37,9 @@
   .hint { font-size: 13px; color: var(--muted); margin: 10px 4px 0; line-height: 1.4; }
   .card .hint { margin: 12px 0 0; }
 
+  .streak-num { font-size: 40px; font-weight: 600; letter-spacing: -.03em; line-height: 1.1; margin: 4px 0 6px; }
+  .streak-num span { font-size: 19px; font-weight: 500; letter-spacing: 0; color: var(--muted); margin-left: 2px; }
+  .accent { color: var(--accent); }
   .hero-num { font-size: 52px; font-weight: 600; letter-spacing: -.03em; margin: 4px 0 12px; }
   .over { color: var(--danger); }
   .meter { height: 4px; background: var(--track); border-radius: 2px; overflow: hidden; }
@@ -156,6 +159,9 @@
     </div>
     <label class="line"><span>Reichen bis</span><input type="date" id="until" onchange="S.until = this.value; save()"></label>
   </div>
+
+  <h2>Konsumfrei</h2>
+  <div class="card" id="streak"></div>
 
   <h2>Konsum erfassen</h2>
   <div class="card">
@@ -366,7 +372,6 @@ function render() {
     : over ? `<span class="over">Tagesbudget um ${g(-b.leftToday)} überschritten</span>`
     : b.isBreak ? 'Heute ist ein geplanter Pausentag.'
     : todayG ? `Heute erfasst: ${g(todayG)}`
-    : last ? `Letzter Konsum vor ${last} ${last === 1 ? 'Tag' : 'Tagen'}`
     : 'Heute noch nichts erfasst';
   $('#perDay').textContent = b ? g(b.perDay) : '–';
   $('#days').textContent = b ? b.days : '–';
@@ -375,6 +380,7 @@ function render() {
     || '<option value="">Noch keine Sorte im Bestand</option>';
   $('#forms').innerHTML = Object.keys(FORMS).map(f =>
     `<button role="radio" aria-checked="${f === S.form}" class="${f === S.form ? 'on' : ''}" data-f="${f}">${f}</button>`).join('');
+  renderStreak(t, last);
   $('#unit').textContent = `1 × ${S.form} = ${g(S.amounts[S.form])} · änderbar in den Einstellungen`;
   $('#todayLogs').innerHTML = [...todays].reverse()
     .map(l => logRow(l, new Date(l.id).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }))).join('')
@@ -424,6 +430,24 @@ function render() {
       <span><input inputmode="decimal" data-a="${f}" value="${n(S.amounts[f])}" aria-label="Gramm pro ${f}" size="5"> g</span></label>`).join('');
   $('#pinBtn').textContent = S.pin ? 'Entfernen' : 'Einrichten';
   $('#pinBtn').classList.toggle('danger', !!S.pin);
+}
+
+function renderStreak(t, last) {
+  const best = longestBreak(S.logs, t), tage = x => `${x} ${x === 1 ? 'Tag' : 'Tage'}`;
+  if (last === null) { $('#streak').innerHTML = '<p class="empty">Der Zähler startet mit deinem ersten Eintrag.</p>'; return; }
+  if (last === 0) {
+    $('#streak').innerHTML = `<div class="streak-num">0 <span>Tage</span></div>
+      <div class="muted small">Heute konsumiert. Der Zähler startet morgen neu.</div>
+      <div class="foot"><span>Rekord</span><span>${tage(best)}</span></div>`;
+    return;
+  }
+  const lastDate = addDays(t, -last), before = dailyAvg(S.logs, lastDate); // spending habit before the break
+  const saved = before ? before.cost * last : 0, [goal, label] = nextMilestone(last), prev = MILESTONES.filter(([d]) => d <= last).pop()?.[0] || 0;
+  $('#streak').innerHTML = `<div class="streak-num">${last} <span>${last === 1 ? 'Tag' : 'Tage'}</span></div>
+    <div class="muted small">seit ${day(addDays(lastDate, 1), { weekday: 'long', day: 'numeric', month: 'long' })}${saved >= 0.5 ? ` · ca. ${eur(saved)} gespart` : ''}</div>
+    <div class="meter" style="margin-top:14px"><div style="width:${(last - prev) / (goal - prev) * 100}%"></div></div>
+    <div class="foot"><span>Noch ${tage(goal - last)} bis ${label}</span>
+      <span class="${last >= best ? 'accent' : ''}">${last >= best ? 'Neuer Rekord' : 'Rekord ' + tage(best)}</span></div>`;
 }
 
 function renderMonth(t) {

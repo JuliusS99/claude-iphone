@@ -63,4 +63,18 @@ function daysSinceLast(logs, today) {
   return dates.length ? daysBetween(dates.reduce((a, b) => (a > b ? a : b)), today) : null;
 }
 
-if (typeof module !== 'undefined') module.exports = { parseLabel, budget, num, dailyAvg, daysSinceLast, activeDays, absorbedMg, addDays };
+// Longest stretch of days without consumption, including the running one (today counts as clean).
+function longestBreak(logs, today) {
+  const dates = [...new Set(logs.map(l => l.date).filter(d => d <= today))].sort();
+  let best = dates.length ? daysBetween(dates[dates.length - 1], today) : 0;
+  for (let i = 1; i < dates.length; i++) best = Math.max(best, daysBetween(dates[i - 1], dates[i]) - 1);
+  return best;
+}
+
+// Next streak goal: [days, label]
+const MILESTONES = [[1, '1 Tag'], [3, '3 Tage'], [7, '1 Woche'], [14, '2 Wochen'], [30, '1 Monat'],
+  [60, '2 Monate'], [90, '3 Monate'], [180, '6 Monate'], [365, '1 Jahr']];
+const nextMilestone = days => MILESTONES.find(([d]) => d > days)
+  || (y => [y * 365, `${y} Jahre`])(Math.ceil((days + 1) / 365));
+
+if (typeof module !== 'undefined') module.exports = { parseLabel, budget, num, dailyAvg, daysSinceLast, activeDays, absorbedMg, addDays, longestBreak, nextMilestone };
