@@ -28,8 +28,8 @@
   body { margin: 0 auto; max-width: 560px; background: var(--bg); color: var(--text);
          font: 17px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
          font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
-         padding: calc(env(safe-area-inset-top) + 20px) 16px calc(env(safe-area-inset-bottom) + 96px); }
-  header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 20px; }
+         padding: calc(env(safe-area-inset-top) + 14px) 16px calc(env(safe-area-inset-bottom) + 96px); }
+  header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; }
   h1 { font-size: 30px; font-weight: 700; letter-spacing: -.02em; margin: 0; }
   h2 { font-size: 13px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em;
        color: var(--muted); margin: 28px 4px 8px; }
@@ -58,12 +58,22 @@
           border-top: 1px solid var(--line); margin-top: 12px; padding-top: 4px; }
   .line.first { border: 0; margin: 0; padding: 0; }
   .line input { width: auto; border: 0; background: none; padding: 0; margin: 0; min-height: 0; text-align: right; color: var(--accent); }
+  .line > button { min-height: 44px; padding-left: 16px; }
+  button.line { width: 100%; min-height: 48px; margin: 0; padding: 0; text-align: left; font-weight: 500; }
+  button.line.first { min-height: 44px; }
 
   input, select, textarea { font: inherit; width: 100%; padding: 12px; margin: 0 0 10px; border-radius: 10px;
          border: 1px solid var(--line); background: var(--bg); color: var(--text); appearance: none; -webkit-appearance: none; }
   input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
   ::placeholder { color: var(--muted); }
   input[type=date] { min-height: 47px; }
+  select { padding-right: 38px; background: var(--bg) no-repeat right 14px center url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%238e8e93' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+  /* tappable stat: an invisible native date input covers it */
+  .date-stat { position: relative; }
+  .date-stat input { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; margin: 0; padding: 0; border: 0; opacity: 0; cursor: pointer; }
+  .unit { position: relative; }
+  .unit input { height: 100%; margin: 0; padding-right: 32px; }
+  .unit span { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
   .row { display: flex; gap: 10px; } .row > * { flex: 1; min-width: 0; }
   button { font: inherit; cursor: pointer; border: 0; background: none; color: var(--accent); padding: 0; }
   button:disabled { opacity: .3; cursor: default; }
@@ -72,9 +82,9 @@
   .primary:active, .secondary:active, .chips button:active, .seg button:active { opacity: .7; }
 
   .chips { display: flex; gap: 8px; margin-bottom: 10px; }
-  .chips button { flex: 1; padding: 10px 0; border-radius: 10px; background: var(--bg); color: var(--text); font-size: 15px; }
+  .chips button { flex: 1; padding: 12px 0; border-radius: 10px; background: var(--bg); color: var(--text); font-size: 15px; }
   .seg { display: flex; padding: 3px; margin-bottom: 10px; border-radius: 10px; background: var(--bg); }
-  .seg button { flex: 1; padding: 8px 0; border-radius: 8px; color: var(--text); font-size: 15px; }
+  .seg button { flex: 1; padding: 12px 0; border-radius: 8px; color: var(--text); font-size: 15px; }
   .seg button.on { background: var(--raised); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
 
   .item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
@@ -82,9 +92,10 @@
   .grow { flex: 1; min-width: 0; }
   .name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .amount { font-weight: 600; white-space: nowrap; }
-  .actions { display: flex; gap: 16px; margin-top: 6px; font-size: 14px; }
+  .actions { display: flex; gap: 16px; margin: 4px 0 -12px; font-size: 15px; }
+  .actions button { min-height: 44px; }
   .danger { color: var(--danger); }
-  .icon { width: 32px; height: 32px; flex: none; display: grid; place-items: center; color: var(--muted); margin-right: -6px; }
+  .icon { width: 44px; height: 44px; flex: none; display: grid; place-items: center; color: var(--muted); margin: -4px -12px -4px -8px; }
   svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
   .date { width: 52px; flex: none; color: var(--muted); font-size: 15px; }
   .empty { color: var(--muted); font-size: 15px; margin: 0; }
@@ -99,7 +110,7 @@
           border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); }
 
   .month-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-weight: 600; }
-  .month-head button { width: 36px; height: 32px; display: grid; place-items: center; }
+  .month-head button { width: 44px; height: 44px; margin: -6px -12px; display: grid; place-items: center; }
   .month-head svg { width: 20px; height: 20px; }
   .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
   .cal-h { font-size: 11px; color: var(--muted); text-align: center; padding-bottom: 2px; }
@@ -109,12 +120,9 @@
   .cal-d.future { background: none; color: var(--muted); opacity: .5; }
 
   .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-  .days button { padding: 10px 0; border-radius: 10px; background: var(--bg); color: var(--text); font-size: 15px; }
+  .days button { padding: 12px 0; border-radius: 10px; background: var(--bg); color: var(--text); font-size: 15px; }
   .days button.on { background: var(--accent); color: var(--on-accent); font-weight: 600; }
 
-  details > summary { list-style: none; cursor: pointer; font-weight: 500; color: var(--accent); }
-  details > summary::-webkit-details-marker { display: none; }
-  details[open] > summary { margin-bottom: 14px; }
 
   nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: flex; justify-content: center;
         padding-bottom: env(safe-area-inset-bottom); border-top: 1px solid var(--line);
@@ -127,6 +135,7 @@
   dialog { border: 0; border-radius: 14px; padding: 20px; width: min(92vw, 400px); background: var(--card); color: var(--text); }
   dialog::backdrop { background: rgba(0,0,0,.4); }
   .dlg-title { font-weight: 600; font-size: 19px; margin-bottom: 14px; }
+  .dlg-title:focus { outline: none; }
 
   #lock { position: fixed; inset: 0; z-index: 100; background: var(--bg); display: flex; flex-direction: column;
           align-items: center; justify-content: center; gap: 28px; padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom); }
@@ -143,12 +152,19 @@
   .row.rev { flex-direction: row-reverse; }
   .field { display: block; }
   .field > span { display: block; font-size: 13px; color: var(--muted); margin: 0 2px 4px; }
-  .stars { display: inline-flex; gap: 2px; vertical-align: -3px; margin-left: -2px; }
-  .stars button { padding: 2px; display: grid; place-items: center; }
-  .stars svg { width: 15px; height: 15px; stroke: var(--muted); stroke-width: 1.5; }
+  .stars { display: inline-flex; margin-left: -9px; }
+  .stars button { width: 36px; height: 44px; display: grid; place-items: center; }
+  .stars svg { width: 18px; height: 18px; stroke: var(--muted); stroke-width: 1.5; }
   .stars .on svg { fill: var(--accent); stroke: var(--accent); }
-  .stars.big { gap: 10px; margin: 2px 0 16px; }
+  .stars.big { margin: -6px 0 8px -11px; }
+  .stars.big button { width: 52px; height: 52px; }
   .stars.big svg { width: 30px; height: 30px; }
+  .item.strain { display: grid; grid-template-columns: 1fr auto; column-gap: 12px; }
+  .acts { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; margin-bottom: -10px; }
+  .acts > button { min-height: 44px; padding-left: 16px; font-size: 15px; }
+  .used-up .grow, .used-up .amount { opacity: .5; }
+  .addrow { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 52px; font-weight: 500; text-align: left; }
+  .addrow svg { width: 20px; height: 20px; }
   input.switch { -webkit-appearance: none; appearance: none; flex: none; position: relative; width: 51px; height: 31px; min-height: 0;
             margin: 0; padding: 0; border: 0; border-radius: 16px; background: var(--track); transition: background .2s; }
   input.switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%;
@@ -167,6 +183,11 @@
   .pad button:active { background: var(--raised); opacity: .7; }
   .pad .plain { background: none; font-size: 15px; font-weight: 500; }
   .pad svg { width: 26px; height: 26px; stroke-width: 1.7; }
+  @media (max-height: 520px) { /* landscape phone: keypad must fit */
+    #lock { gap: 14px; }
+    .pad { grid-template-columns: repeat(3, 60px); gap: 8px 22px; }
+    .pad button { height: 60px; font-size: 24px; }
+  }
 </style>
 </head>
 <body>
@@ -177,7 +198,7 @@
 
 <!-- Heute -->
 <section data-tab="heute">
-  <div class="card">
+  <div class="card" id="hero">
     <div class="eyebrow" id="heroLabel">Heute verfügbar</div>
     <div id="left" class="hero-num"></div>
     <div id="meter" class="meter"><div></div></div>
@@ -185,33 +206,40 @@
     <div id="stockWarn" class="small warn" style="margin-top:4px" hidden></div>
     <div class="stats">
       <div><div class="eyebrow">Pro Tag</div><div id="perDay" class="stat"></div></div>
-      <div><div class="eyebrow">Konsumtage</div><div id="days" class="stat"></div></div>
       <div><div class="eyebrow">Bestand</div><div id="total" class="stat"></div></div>
+      <div class="date-stat"><div class="eyebrow">Reichen bis</div><div id="untilLabel" class="stat accent"></div>
+        <input type="date" id="until" aria-label="Reichen bis" onchange="if (this.value) { S.until = this.value; save(); }"></div>
     </div>
-    <label class="line"><span>Reichen bis</span><input type="date" id="until" onchange="S.until = this.value; save()"></label>
   </div>
 
-  <h2>Konsumfrei</h2>
-  <div class="card" id="streak"></div>
-
-  <h2>Konsum erfassen</h2>
-  <div class="card">
-    <select id="strain" aria-label="Sorte"></select>
-    <div class="seg" id="forms" role="radiogroup" aria-label="Konsumform"></div>
-    <div class="chips" id="chips">
-      <button data-m="0.5">½ ×</button><button data-m="1">1 ×</button>
-      <button data-m="2">2 ×</button><button data-m="3">3 ×</button>
+  <div class="card" id="logCard">
+    <div id="logForm">
+      <select id="strain" aria-label="Sorte"></select>
+      <div class="seg" id="forms" role="radiogroup" aria-label="Konsumform"></div>
+      <div class="chips" id="chips">
+        <button data-m="0.5">½ ×</button><button data-m="1">1 ×</button>
+        <button data-m="2">2 ×</button><button data-m="3">3 ×</button>
+      </div>
+      <div class="row">
+        <label class="unit"><input id="use" inputmode="decimal" placeholder="Menge" aria-label="Menge in Gramm"><span>g</span></label>
+        <button class="primary" onclick="logUse()">Erfassen</button>
+      </div>
     </div>
-    <p class="hint" id="unit" style="margin:-2px 2px 10px"></p>
-    <div class="row">
-      <input id="use" inputmode="decimal" placeholder="Menge in g" aria-label="Menge in Gramm">
-      <input type="date" id="date" aria-label="Datum">
+    <div id="logEmpty" hidden>
+      <p id="logEmptyText" style="margin:0 0 14px"></p>
+      <button class="primary" id="logEmptyBtn"></button>
     </div>
-    <button class="primary" onclick="logUse()">Erfassen</button>
   </div>
 
-  <h2>Heute erfasst</h2>
-  <div class="card" id="todayLogs"></div>
+  <div id="todayBlock">
+    <h2>Heute erfasst</h2>
+    <div class="card" id="todayLogs"></div>
+  </div>
+
+  <div id="streakBlock">
+    <h2>Konsumfrei</h2>
+    <div class="card" id="streak"></div>
+  </div>
 </section>
 
 <!-- Bestand -->
@@ -220,30 +248,13 @@
     <div class="stats bare">
       <div><div class="eyebrow">Gesamt</div><div id="stockTotal" class="stat"></div></div>
       <div><div class="eyebrow">Wert</div><div id="stockValue" class="stat"></div></div>
-      <div><div class="eyebrow">Reicht bis</div><div id="runout" class="stat"></div></div>
+      <div><div class="eyebrow">Leer am</div><div id="runout" class="stat"></div></div>
     </div>
   </div>
-  <p class="hint">„Reicht bis“ rechnet mit deinem durchschnittlichen Tagesbedarf.</p>
 
   <h2>Sorten</h2>
   <div class="card" id="stock"></div>
-  <div class="card">
-    <details id="addForm">
-      <summary>Sorte hinzufügen</summary>
-      <textarea id="label" rows="3" placeholder="Etikett-Text" oninput="fillFromLabel()" aria-label="Etikett-Text"></textarea>
-      <input id="name" placeholder="Name" aria-label="Name">
-      <div class="row">
-        <input id="thc" inputmode="decimal" placeholder="THC %" aria-label="THC in Prozent">
-        <input id="cbd" inputmode="decimal" placeholder="CBD %" aria-label="CBD in Prozent">
-      </div>
-      <div class="row">
-        <input id="grams" inputmode="decimal" placeholder="Gramm" aria-label="Menge in Gramm">
-        <input id="price" inputmode="decimal" placeholder="Preis gesamt €" aria-label="Preis gesamt in Euro">
-      </div>
-      <button class="primary" onclick="addStrain()">Hinzufügen</button>
-      <p class="hint">Etikett scannen: in das Feld „Etikett-Text“ tippen, „Text scannen“ wählen und die Kamera auf das Etikett richten. Die Werte werden automatisch übernommen.</p>
-    </details>
-  </div>
+  <button class="card addrow" onclick="addStrain()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Sorte hinzufügen</button>
 </section>
 
 <!-- Statistik -->
@@ -308,9 +319,8 @@
 
   <h2>Daten</h2>
   <div class="card">
-    <div class="line first"><span>Backup</span>
-      <span class="row" style="flex:none;gap:20px"><button onclick="exportData()">Exportieren</button><button onclick="$('#imp').click()">Importieren</button></span>
-    </div>
+    <button class="line first" onclick="exportData()">Backup exportieren</button>
+    <button class="line" onclick="$('#imp').click()">Backup importieren</button>
     <input type="file" id="imp" accept="application/json,.json" hidden onchange="importData(this.files[0]); this.value = ''">
     <p class="hint">Alle Daten liegen nur auf diesem Gerät. Ein Backup kannst du in iCloud Drive sichern.</p>
   </div>
@@ -325,11 +335,11 @@
 
 <dialog id="edit">
   <form method="dialog" id="editForm">
-    <div class="dlg-title" id="editTitle"></div>
+    <div class="dlg-title" id="editTitle" tabindex="-1"></div>
     <div id="editBody"></div>
     <!-- ok first in the DOM so the keyboard's return key saves; shown on the right -->
     <div class="row rev"><button value="ok" class="primary" id="editOk"></button><button value="cancel" class="secondary">Abbrechen</button></div>
-    <button value="del" class="danger" id="editDel" style="width:100%;margin-top:16px;padding:6px">Löschen</button>
+    <button value="del" class="danger" id="editDel" style="width:100%;margin-top:8px;padding:12px">Löschen</button>
   </form>
 </dialog>
 
@@ -398,14 +408,17 @@ $('#toastUndo').onclick = () => {
 
 // One dialog for all edit forms. onSave returns false to keep the dialog open (invalid input).
 let onSave = null, onDel = null;
-function openEdit(title, html, save, del, okLabel = 'Speichern') {
+// keyboard: focus the first field (opens the iOS keyboard); otherwise focus the title so it stays closed
+function openEdit(title, html, save, del, okLabel = 'Speichern', keyboard = false) {
   onSave = save; onDel = del;
   $('#editTitle').textContent = title;
+  $('#editTitle').toggleAttribute('autofocus', !keyboard);
   $('#editBody').innerHTML = html;
-  $('#editBody').onclick = null;
+  $('#editBody').onclick = $('#editBody').oninput = null;
   $('#editOk').textContent = okLabel;
   $('#editDel').hidden = !del;
   $('#edit').showModal();
+  if (keyboard) $('#editBody').querySelector('input, textarea')?.focus();
 }
 $('#editForm').onsubmit = e => {
   const v = e.submitter?.value;
@@ -446,8 +459,11 @@ function render() {
   const inPause = S.pause && t >= S.pause.start && t < S.pause.end;
 
   // Heute
+  const avail = S.strains.filter(s => s.grams > 0), fresh = !S.strains.length && !S.logs.length;
   $('#todayLabel').textContent = day(t, { weekday: 'long', day: 'numeric', month: 'long' });
+  $('#hero').hidden = fresh;
   $('#until').value = until;
+  $('#untilLabel').textContent = day(until, { day: 'numeric', month: 'short' });
   $('#total').textContent = g(stock);
   const over = b && left < -1e-9;
   $('#heroLabel').textContent = inPause ? 'Pausenziel' : b?.isBreak ? 'Pausentag' : planned ? 'Heute verfügbar · Reduktionsplan' : 'Heute verfügbar';
@@ -455,41 +471,46 @@ function render() {
   $('#left').classList.toggle('over', !!over);
   $('#meter').classList.toggle('over', !!over);
   $('#meter').firstChild.style.width = (!b ? 0 : b.isBreak ? (todayG ? 100 : 0) : perDay > 0 ? Math.min(todayG / perDay, 1) * 100 : 0) + '%';
-  $('#note').innerHTML = !b ? '<span class="over">Das Zieldatum liegt in der Vergangenheit.</span>'
+  $('#note').innerHTML = !b ? '<span class="over">Das Datum „Reichen bis“ liegt in der Vergangenheit.</span>'
     : over && b.isBreak ? `<span class="over">Am Pausentag ${g(todayG)} erfasst</span>`
     : over ? `<span class="over">Tagesbudget um ${g(-left)} überschritten</span>`
     : inPause ? `Tag ${daysBetween(S.pause.start, t) + 1} von ${S.pause.days} deines Pausenziels.`
     : b.isBreak ? 'Heute ist ein geplanter Pausentag.'
-    : todayG ? `Heute erfasst: ${g(todayG)}`
-    : 'Heute noch nichts erfasst';
+    : todayG ? `${g(todayG)} von ${g(perDay)} erfasst` : 'Heute noch nichts erfasst';
   $('#perDay').textContent = b ? g(perDay) : '–';
   const runDays = avg && avg.grams > 0 ? Math.floor(stock / avg.grams) : null;
   $('#stockWarn').hidden = !S.strains.length || !(stock <= 0 || (runDays !== null && runDays <= 5));
   $('#stockWarn').textContent = stock <= 0 ? 'Dein Bestand ist leer.'
     : runDays === 0 ? 'Bei deinem Tempo reicht der Bestand nur noch heute.'
     : `Bei deinem Tempo reicht der Bestand nur noch ca. ${tage(runDays)}.`;
-  $('#days').textContent = b ? b.days : '–';
 
-  $('#strain').innerHTML = S.strains.map(s => `<option value="${s.id}">${esc(s.name)} — ${g(s.grams)}</option>`).join('')
-    || '<option value="">Noch keine Sorte im Bestand</option>';
+  // log form: remembers the strain, offers only strains that are not used up
+  if (!avail.some(s => s.id === S.strainId)) S.strainId = avail[0]?.id;
+  $('#logForm').hidden = !avail.length;
+  $('#logEmpty').hidden = !!avail.length;
+  $('#strain').innerHTML = avail.map(s => `<option value="${s.id}"${s.id === S.strainId ? ' selected' : ''}>${esc(s.name)} — ${g(s.grams)}</option>`).join('');
+  $('#logEmptyText').textContent = fresh ? 'Willkommen. Lege zuerst deinen Bestand an, danach erfasst du hier mit einem Tipp und siehst, wie viel dir pro Tag bleibt.'
+    : S.strains.length ? 'Dein Bestand ist aufgebraucht. Fülle eine Sorte nach oder füge eine neue hinzu.' : 'Kein Bestand vorhanden.';
+  $('#logEmptyBtn').textContent = S.strains.length ? 'Zum Bestand' : 'Erste Sorte hinzufügen';
+  $('#logEmptyBtn').onclick = () => S.strains.length ? show('bestand') : addStrain();
   $('#forms').innerHTML = Object.keys(FORMS).map(f =>
     `<button role="radio" aria-checked="${f === S.form}" class="${f === S.form ? 'on' : ''}" data-f="${f}">${f}</button>`).join('');
-  renderStreak(t, last);
-  $('#unit').textContent = `1 × ${S.form} = ${g(S.amounts[S.form])} · änderbar in den Einstellungen`;
+  $('#todayBlock').hidden = !todays.length;
   $('#todayLogs').innerHTML = [...todays].reverse()
-    .map(l => logRow(l, new Date(l.id).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }))).join('')
-    || '<p class="empty">Noch keine Einträge heute.</p>';
+    .map(l => logRow(l, new Date(l.id).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }))).join('');
+  $('#streakBlock').hidden = last === null && !S.pause;
+  renderStreak(t, last);
 
-  // Bestand
+  // Bestand: used-up strains last and dimmed (kept for their rating)
   $('#stockTotal').textContent = g(stock);
   $('#stockValue').textContent = eur(S.strains.reduce((a, s) => a + s.grams * (s.price || 0), 0));
   $('#runout').textContent = avg && avg.grams > 0 && stock > 0
     ? day(addDays(t, Math.floor(stock / avg.grams)), { day: 'numeric', month: 'short' }) : '–';
-  $('#stock').innerHTML = S.strains.map(s => `<div class="item tap" data-sid="${s.id}"><div class="grow">
-      <div class="name">${esc(s.name)}</div>
-      <div class="muted small">THC ${n(s.thc)} % · CBD ${n(s.cbd)} %${s.price ? ' · ' + eur(s.price) + '/g' : ''}</div>
-      <div class="actions">${stars(s.rating || 0)}<button data-restock>Nachfüllen</button></div>
-    </div><div class="amount">${g(s.grams)}</div></div>`).join('')
+  $('#stock').innerHTML = [...S.strains].sort((a, b) => (b.grams > 0) - (a.grams > 0)).map(s => `<div class="item strain tap${s.grams > 0 ? '' : ' used-up'}" data-sid="${s.id}">
+      <div class="grow"><div class="name">${esc(s.name)}</div>
+        <div class="muted small">THC ${n(s.thc)} % · CBD ${n(s.cbd)} %${s.price ? ' · ' + eur(s.price) + '/g' : ''}</div></div>
+      <div class="amount">${s.grams > 0 ? g(s.grams) : 'leer'}</div>
+      <div class="acts">${stars(s.rating || 0)}<button data-restock>Nachfüllen</button></div></div>`).join('')
     || '<p class="empty">Noch keine Sorte erfasst.</p>';
 
   // Statistik: Tagesbedarf
@@ -536,7 +557,7 @@ function render() {
 
 function renderStreak(t, last) {
   const best = longestBreak(S.logs, t), P = S.pause;
-  const btn = `<div class="actions" style="margin-top:12px">${P && t < P.end
+  const btn = `<div class="actions">${P && t < P.end
     ? '<button class="danger" onclick="endPause()">Pausenziel beenden</button>'
     : `<button onclick="setPause()">${P ? 'Neues Pausenziel' : 'Pausenziel setzen'}</button>`}</div>`;
   if (last === null && !P) { $('#streak').innerHTML = '<p class="empty">Der Zähler startet mit deinem ersten Eintrag.</p>'; return; }
@@ -612,6 +633,7 @@ function renderMonth(t) {
 function shiftMonth(k) { const [y, m] = month.split('-').map(Number); month = iso(new Date(y, m - 1 + k, 1)).slice(0, 7); render(); }
 
 const fillAmount = (m = 1) => $('#use').value = n(S.amounts[S.form] * m);
+$('#strain').onchange = e => { S.strainId = +e.target.value; save(); };
 $('#chips').onclick = e => { if (e.target.dataset.m) fillAmount(+e.target.dataset.m); };
 $('#forms').onclick = e => { if (e.target.dataset.f) { S.form = e.target.dataset.f; save(); fillAmount(); } };
 $('#amounts').onchange = e => {
@@ -653,20 +675,30 @@ $('#breaks').onclick = e => {
   save();
 };
 
-function fillFromLabel() {
-  const p = parseLabel($('#label').value);
-  if (p.name && !$('#name').value) $('#name').value = p.name;
-  for (const k of ['thc', 'cbd', 'grams']) if (p[k] != null) $('#' + k).value = String(p[k]).replace('.', ',');
-}
+const strainFields = (s, shownG, shownP) => `${s ? '' : `<label class="field"><span>Etikett scannen (optional)</span>
+    <textarea id="eLabel" rows="2" placeholder="Antippen, dann „Text scannen“ wählen"></textarea></label>`}
+  <label class="field"><span>Name</span><input id="eName" value="${s ? esc(s.name) : ''}"></label>
+  <div class="row"><label class="field"><span>THC %</span><input id="eThc" inputmode="decimal" value="${s ? n(s.thc) : ''}"></label>
+    <label class="field"><span>CBD %</span><input id="eCbd" inputmode="decimal" value="${s ? n(s.cbd) : ''}"></label></div>
+  <div class="row"><label class="field"><span>${s ? 'Bestand in g' : 'Menge in g'}</span><input id="eGrams" inputmode="decimal" value="${s ? shownG : ''}"></label>
+    <label class="field"><span>${s ? 'Preis pro g in €' : 'Preis gesamt in €'}</span><input id="ePrice" inputmode="decimal" value="${s ? shownP : ''}"></label></div>
+  ${s ? `<span class="field"><span>Bewertung</span></span><div id="eStars">${stars(s.rating || 0, true)}</div>` : ''}`;
 
 function addStrain() {
-  const name = $('#name').value.trim(), grams = num($('#grams').value), total = num($('#price').value);
-  if (!name || !(grams > 0)) return alert('Bitte Name und Menge in Gramm angeben.');
-  S.strains.push({ id: Date.now(), name, thc: num($('#thc').value) || 0, cbd: num($('#cbd').value) || 0, grams,
-                   price: total > 0 ? total / grams : 0 });
-  for (const k of ['label', 'name', 'thc', 'cbd', 'grams', 'price']) $('#' + k).value = '';
-  $('#addForm').open = false;
-  save();
+  openEdit('Sorte hinzufügen', strainFields(), () => {
+    const name = $('#eName').value.trim(), grams = num($('#eGrams').value), total = num($('#ePrice').value), id = Date.now();
+    if (!name || !(grams > 0)) return alert('Bitte Name und Menge in Gramm angeben.'), false;
+    withUndo(`${name} hinzugefügt`, () => {
+      S.strains.push({ id, name, thc: num($('#eThc').value) || 0, cbd: num($('#eCbd').value) || 0, grams, price: total > 0 ? total / grams : 0 });
+      S.strainId = id; // ready to log right away
+    });
+  }, null, 'Hinzufügen', true);
+  $('#editBody').oninput = e => { // scanned label text fills the fields
+    if (e.target.id !== 'eLabel') return;
+    const p = parseLabel(e.target.value);
+    if (p.name && !$('#eName').value) $('#eName').value = p.name;
+    for (const [k, id] of [['thc', '#eThc'], ['cbd', '#eCbd'], ['grams', '#eGrams']]) if (p[k] != null) $(id).value = String(p[k]).replace('.', ',');
+  };
 }
 
 function restock(s) {
@@ -678,17 +710,12 @@ function restock(s) {
       s.price = (s.grams * (s.price || 0) + (p > 0 ? p : x * (s.price || 0))) / (s.grams + x); // weighted average price
       s.grams = r3(s.grams + x);
     });
-  }, null, 'Hinzufügen');
+  }, null, 'Hinzufügen', true);
 }
 
 function editStrain(s) {
   const shownG = n(s.grams), shownP = s.price ? n(s.price) : '';
-  openEdit('Sorte bearbeiten', `<label class="field"><span>Name</span><input id="eName" value="${esc(s.name)}"></label>
-    <div class="row"><label class="field"><span>THC %</span><input id="eThc" inputmode="decimal" value="${n(s.thc)}"></label>
-      <label class="field"><span>CBD %</span><input id="eCbd" inputmode="decimal" value="${n(s.cbd)}"></label></div>
-    <div class="row"><label class="field"><span>Bestand in g</span><input id="eGrams" inputmode="decimal" value="${shownG}"></label>
-      <label class="field"><span>Preis pro g in €</span><input id="ePrice" inputmode="decimal" value="${shownP}"></label></div>
-    <span class="field"><span>Bewertung</span></span><div id="eStars">${stars(s.rating || 0, true)}</div>`, () => {
+  openEdit('Sorte bearbeiten', strainFields(s, shownG, shownP), () => {
     const name = $('#eName').value.trim(), grams = keep('#eGrams', s.grams, shownG);
     if (!name || !(grams >= 0)) return alert('Bitte Name und Bestand angeben.'), false;
     const thc = num($('#eThc').value) || 0;
@@ -703,10 +730,10 @@ function editStrain(s) {
 
 function logUse() {
   const s = S.strains.find(s => s.id === +$('#strain').value), x = num($('#use').value);
-  if (!s) return alert('Bitte zuerst eine Sorte zum Bestand hinzufügen.');
+  if (!s) return;
   if (!(x > 0)) return alert('Bitte eine Menge in Gramm angeben.');
   if (x > s.grams + 1e-9) return alert(`Im Bestand sind nur noch ${g(s.grams)} ${s.name}.`);
-  const date = $('#date').value || today(), endsPause = S.pause && date >= S.pause.start && date < S.pause.end;
+  const date = today(), endsPause = S.pause && date >= S.pause.start && date < S.pause.end;
   withUndo(`${g(x)} erfasst${endsPause ? ' · Pausenziel beendet' : ''}`, () => {
     s.grams = r3(s.grams - x);
     S.logs.push({ id: Date.now(), strainId: s.id, name: s.name, thc: s.thc, price: s.price || 0, form: S.form, grams: x, date });
@@ -803,13 +830,12 @@ document.addEventListener('visibilitychange', () => {
     hideToast();
     if (S.pin && pinMode !== 'set' && pinMode !== 'confirm') { $$('dialog[open]').forEach(d => d.close()); openLock('unlock'); }
   } else if (shownDay !== today()) {
-    $('#date').value = shownDay = today();
+    shownDay = today();
     month = today().slice(0, 7);
     render();
   }
 });
 
-$('#date').value = today();
 render();
 fillAmount();
 if (S.pin) openLock('unlock');

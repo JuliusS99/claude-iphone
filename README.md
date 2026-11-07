@@ -7,7 +7,8 @@ Cannabis-Tracker als Web-App fürs iPhone. Alle Daten bleiben lokal auf dem Ger�
 - **Bestand:** Sorten mit THC/CBD, Preis und Bewertung (1–5 Sterne), Gesamtwert, „reicht bis“ nach deinem Tempo
 - **Statistik:** Ø Tagesbedarf in Gramm und Euro, letzte 7 Tage, Monatskalender mit Vormonatsvergleich, Verlauf
 - **Einstellungen:** Pausentage, Menge pro Konsumform, Reduktionsplan, PIN-Sperre, Backup
-- Einträge und Sorten antippen zum Bearbeiten; Erfassen und Löschen lassen sich 5 Sekunden lang rückgängig machen
+- Einträge und Sorten antippen zum Bearbeiten (auch das Datum eines Eintrags); Erfassen und Löschen lassen sich 5 Sekunden lang rückgängig machen
+- Optimiert für alle aktuellen iPhones (SE bis Pro Max), Querformat und iPad; Tippflächen nach Apple-Richtlinie (44 pt)
 - Funktioniert offline (Service Worker)
 
 ## Aufs iPhone
