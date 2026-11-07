@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kontingent">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" href="icon.png">
+<title>Kontingent</title>
+<style>
+  :root {
+    --bg: #f2f2f7; --card: #fff; --text: #111113; --muted: #6e6e73; --line: #e3e3e8;
+    --accent: #2f6b4f; --track: #e8e8ed; --danger: #c4372f;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #000; --card: #1c1c1e; --text: #f2f2f7; --muted: #8e8e93; --line: #2c2c2e;
+            --accent: #5fb98a; --track: #2c2c2e; --danger: #ff6b61; color-scheme: dark; }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0 auto; max-width: 560px; background: var(--bg); color: var(--text);
+         font: 17px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+         font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
+         padding: calc(env(safe-area-inset-top) + 20px) 16px calc(env(safe-area-inset-bottom) + 48px); }
+  header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 20px; }
+  h1 { font-size: 30px; font-weight: 700; letter-spacing: -.02em; margin: 0; }
+  h2 { font-size: 13px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em;
+       color: var(--muted); margin: 28px 4px 8px; }
+  .card { background: var(--card); border-radius: 14px; padding: 16px; }
+  .muted { color: var(--muted); } .small { font-size: 14px; }
+  .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+
+  .hero-num { font-size: 52px; font-weight: 600; letter-spacing: -.03em; margin: 4px 0 12px; }
+  .over { color: var(--danger); }
+  .meter { height: 4px; background: var(--track); border-radius: 2px; overflow: hidden; }
+  .meter > div { height: 100%; background: var(--accent); transition: width .3s; }
+  .meter.over > div { background: var(--danger); }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 20px 0 4px;
+           padding-top: 16px; border-top: 1px solid var(--line); }
+  .stat { font-size: 19px; font-weight: 600; margin-top: 2px; }
+
+  .line { display: flex; justify-content: space-between; align-items: center; min-height: 44px;
+          border-top: 1px solid var(--line); margin-top: 12px; padding-top: 4px; }
+  .line input { width: auto; border: 0; background: none; padding: 0; margin: 0; text-align: right; color: var(--accent); }
+
+  input, select, textarea { font: inherit; width: 100%; padding: 12px; margin: 0 0 10px; border-radius: 10px;
+         border: 1px solid var(--line); background: var(--bg); color: var(--text); appearance: none; -webkit-appearance: none; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  ::placeholder { color: var(--muted); }
+  input[type=date] { min-height: 47px; }
+  .row { display: flex; gap: 10px; } .row > * { flex: 1; min-width: 0; }
+  button { font: inherit; cursor: pointer; border: 0; background: none; color: var(--accent); padding: 0; }
+  .primary { width: 100%; padding: 14px; border-radius: 12px; background: var(--accent); color: #fff; font-weight: 600; }
+  @media (prefers-color-scheme: dark) { .primary { color: #000; } }
+  .primary:active, .chips button:active { opacity: .7; }
+  .chips { display: flex; gap: 8px; margin-bottom: 10px; }
+  .chips button { flex: 1; padding: 10px 0; border-radius: 10px; background: var(--bg); color: var(--text); font-size: 15px; }
+
+  .item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+  .item:first-child { border-top: 0; padding-top: 0; } .item:last-child { padding-bottom: 0; }
+  .grow { flex: 1; min-width: 0; }
+  .name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .amount { font-weight: 600; white-space: nowrap; }
+  .actions { display: flex; gap: 16px; margin-top: 6px; font-size: 14px; }
+  .danger { color: var(--danger); }
+  .icon { width: 32px; height: 32px; display: grid; place-items: center; color: var(--muted); margin-right: -6px; }
+  .icon svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; fill: none; }
+  .date { width: 64px; flex: none; color: var(--muted); font-size: 15px; }
+  .empty { color: var(--muted); font-size: 15px; margin: 0; }
+
+  .chart { display: flex; align-items: flex-end; gap: 8px; height: 120px; }
+  .col { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 6px; }
+  .bar { width: 100%; background: var(--track); border-radius: 4px; min-height: 2px; }
+  .bar.today { background: var(--accent); }
+  .col span { font-size: 12px; color: var(--muted); }
+  .chart-foot { display: flex; justify-content: space-between; margin-top: 14px; padding-top: 12px;
+                border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); }
+
+  details > summary { list-style: none; cursor: pointer; font-weight: 500; color: var(--accent); }
+  details > summary::-webkit-details-marker { display: none; }
+  details[open] > summary { margin-bottom: 14px; }
+  .hint { font-size: 13px; color: var(--muted); margin: 0 0 6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Kontingent</h1>
+  <span id="todayLabel" class="muted small"></span>
+</header>
+
+<div class="card">
+  <div class="eyebrow">Heute verfügbar</div>
+  <div id="left" class="hero-num"></div>
+  <div id="meter" class="meter"><div></div></div>
+  <div id="note" class="muted small" style="margin-top:8px"></div>
+  <div class="stats">
+    <div><div class="eyebrow">Pro Tag</div><div id="perDay" class="stat"></div></div>
+    <div><div class="eyebrow">Tage</div><div id="days" class="stat"></div></div>
+    <div><div class="eyebrow">Bestand</div><div id="total" class="stat"></div></div>
+  </div>
+  <label class="line"><span>Reichen bis</span><input type="date" id="until" onchange="S.until = this.value; save()"></label>
+</div>
+
+<h2>Konsum erfassen</h2>
+<div class="card">
+  <select id="strain" aria-label="Sorte"></select>
+  <div class="chips" id="chips">
+    <button data-g="0,1">0,1 g</button><button data-g="0,2">0,2 g</button>
+    <button data-g="0,3">0,3 g</button><button data-g="0,5">0,5 g</button>
+  </div>
+  <div class="row">
+    <input id="use" inputmode="decimal" placeholder="Menge in g" aria-label="Menge in Gramm">
+    <input type="date" id="date" aria-label="Datum">
+  </div>
+  <button class="primary" onclick="logUse()">Erfassen</button>
+</div>
+
+<h2>Bestand</h2>
+<div class="card" id="stock"></div>
+<div class="card" style="margin-top:10px">
+  <details id="addForm">
+    <summary>Sorte hinzufügen</summary>
+    <p class="hint">Etikett scannen: in das Feld tippen, „Text scannen“ wählen und die Kamera auf das Etikett richten.</p>
+    <textarea id="label" rows="3" placeholder="Etikett-Text" oninput="fillFromLabel()" aria-label="Etikett-Text"></textarea>
+    <input id="name" placeholder="Name" aria-label="Name">
+    <div class="row">
+      <input id="thc" inputmode="decimal" placeholder="THC %" aria-label="THC in Prozent">
+      <input id="cbd" inputmode="decimal" placeholder="CBD %" aria-label="CBD in Prozent">
+      <input id="grams" inputmode="decimal" placeholder="Gramm" aria-label="Menge in Gramm">
+    </div>
+    <button class="primary" onclick="addStrain()">Hinzufügen</button>
+  </details>
+</div>
+
+<h2>Letzte 7 Tage</h2>
+<div class="card">
+  <div class="chart" id="chart"></div>
+  <div class="chart-foot" id="chartFoot"></div>
+</div>
+
+<h2>Verlauf</h2>
+<div class="card" id="logs"></div>
+
+<h2>Daten</h2>
+<div class="card">
+  <div class="row">
+    <button onclick="exportData()">Backup exportieren</button>
+    <button onclick="$('#imp').click()">Backup importieren</button>
+  </div>
+  <input type="file" id="imp" accept="application/json,.json" hidden onchange="importData(this.files[0]); this.value = ''">
+</div>
+
+<script src="logic.js"></script>
+<script>
+const KEY = 'kontingent';
+const $ = q => document.querySelector(q);
+let S = JSON.parse(localStorage.getItem(KEY) || 'null') || { strains: [], logs: [], until: '' };
+
+const iso = d => d.toLocaleDateString('sv'); // YYYY-MM-DD, local time
+const today = () => iso(new Date());
+const eom = () => { const d = new Date(); return iso(new Date(d.getFullYear(), d.getMonth() + 1, 0)); };
+const n = x => (Math.round(x * 100) / 100).toLocaleString('de-DE');
+const g = x => n(x) + ' g';
+const r3 = x => Math.round(x * 1000) / 1000; // avoid float drift in stock
+const esc = s => String(s).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+const day = (d, o) => new Date(d + 'T12:00').toLocaleDateString('de-DE', o);
+const sum = a => a.reduce((t, l) => t + l.grams, 0);
+const X = '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+
+function save() { localStorage.setItem(KEY, JSON.stringify(S)); render(); }
+
+function render() {
+  const t = today(), until = S.until || eom();
+  const stock = S.strains.reduce((a, s) => a + s.grams, 0);
+  const todayG = sum(S.logs.filter(l => l.date === t));
+  const b = budget(stock, todayG, t, until);
+
+  $('#todayLabel').textContent = day(t, { weekday: 'long', day: 'numeric', month: 'long' });
+  $('#until').value = until;
+  $('#total').textContent = g(stock);
+  const over = b && b.leftToday < -1e-9;
+  $('#left').textContent = b ? g(Math.max(b.leftToday, 0)) : '–';
+  $('#left').classList.toggle('over', !!over);
+  $('#meter').classList.toggle('over', !!over);
+  $('#meter').firstChild.style.width = (b && b.perDay > 0 ? Math.min(todayG / b.perDay, 1) * 100 : 0) + '%';
+  $('#note').innerHTML = !b ? '<span class="over">Das Zieldatum liegt in der Vergangenheit.</span>'
+    : over ? `<span class="over">Tagesbudget um ${g(-b.leftToday)} überschritten</span>`
+    : `Heute erfasst: ${g(todayG)}`;
+  $('#perDay').textContent = b ? g(b.perDay) : '–';
+  $('#days').textContent = b ? b.days : '–';
+
+  $('#strain').innerHTML = S.strains.map(s => `<option value="${s.id}">${esc(s.name)} — ${g(s.grams)}</option>`).join('')
+    || '<option value="">Noch keine Sorte im Bestand</option>';
+
+  $('#stock').innerHTML = S.strains.map(s => `<div class="item"><div class="grow">
+      <div class="name">${esc(s.name)}</div>
+      <div class="muted small">THC ${n(s.thc)} % · CBD ${n(s.cbd)} %</div>
+      <div class="actions"><button onclick="restock(${s.id})">Nachfüllen</button>
+        <button class="danger" onclick="delStrain(${s.id})">Entfernen</button></div>
+    </div><div class="amount">${g(s.grams)}</div></div>`).join('')
+    || '<p class="empty">Noch keine Sorte erfasst.</p>';
+
+  const days = [...Array(7)].map((_, i) => { const d = new Date(); d.setDate(d.getDate() - 6 + i); return iso(d); });
+  const totals = days.map(d => sum(S.logs.filter(l => l.date === d)));
+  const max = Math.max(...totals, 0.001), week = totals.reduce((a, x) => a + x, 0);
+  $('#chart').innerHTML = days.map((d, i) => `<div class="col" title="${g(totals[i])}">
+      <div class="bar ${d === t ? 'today' : ''}" style="height:${totals[i] / max * 100}%"></div>
+      <span>${day(d, { weekday: 'short' }).slice(0, 2)}</span></div>`).join('');
+  $('#chartFoot').innerHTML = `<span>Summe ${g(week)}</span><span>Ø ${g(week / 7)} pro Tag</span>`;
+
+  $('#logs').innerHTML = [...S.logs].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id).slice(0, 50)
+    .map(l => `<div class="item"><div class="date">${day(l.date, { day: '2-digit', month: '2-digit' })}</div>
+      <div class="grow"><div class="name">${esc(l.name)}</div>
+        <div class="muted small">ca. ${Math.round(l.grams * l.thc * 10)} mg THC</div></div>
+      <div class="amount">${g(l.grams)}</div>
+      <button class="icon" aria-label="Eintrag löschen" onclick="delLog(${l.id})">${X}</button></div>`).join('')
+    || '<p class="empty">Noch keine Einträge.</p>';
+}
+
+$('#chips').onclick = e => { if (e.target.dataset.g) $('#use').value = e.target.dataset.g; };
+
+function fillFromLabel() {
+  const p = parseLabel($('#label').value);
+  if (p.name && !$('#name').value) $('#name').value = p.name;
+  for (const k of ['thc', 'cbd', 'grams']) if (p[k] != null) $('#' + k).value = String(p[k]).replace('.', ',');
+}
+
+function addStrain() {
+  const name = $('#name').value.trim(), grams = num($('#grams').value);
+  if (!name || !(grams > 0)) return alert('Bitte Name und Menge in Gramm angeben.');
+  S.strains.push({ id: Date.now(), name, thc: num($('#thc').value) || 0, cbd: num($('#cbd').value) || 0, grams });
+  for (const k of ['label', 'name', 'thc', 'cbd', 'grams']) $('#' + k).value = '';
+  $('#addForm').open = false;
+  save();
+}
+
+function restock(id) {
+  const s = S.strains.find(s => s.id === id), x = num(prompt(`Wie viel Gramm ${s.name} kommen hinzu?`));
+  if (x > 0) { s.grams = r3(s.grams + x); save(); }
+}
+
+function delStrain(id) {
+  const s = S.strains.find(s => s.id === id);
+  if (confirm(`${s.name} aus dem Bestand entfernen? Der Verlauf bleibt erhalten.`)) { S.strains = S.strains.filter(x => x !== s); save(); }
+}
+
+function logUse() {
+  const s = S.strains.find(s => s.id === +$('#strain').value), x = num($('#use').value);
+  if (!s) return alert('Bitte zuerst eine Sorte zum Bestand hinzufügen.');
+  if (!(x > 0)) return alert('Bitte eine Menge in Gramm angeben.');
+  if (x > s.grams + 1e-9) return alert(`Im Bestand sind nur noch ${g(s.grams)} ${s.name}.`);
+  s.grams = r3(s.grams - x);
+  S.logs.push({ id: Date.now(), strainId: s.id, name: s.name, thc: s.thc, grams: x, date: $('#date').value || today() });
+  $('#use').value = '';
+  save();
+}
+
+function delLog(id) {
+  const l = S.logs.find(l => l.id === id), s = S.strains.find(s => s.id === l.strainId);
+  if (!confirm('Eintrag löschen? Die Menge wird dem Bestand wieder gutgeschrieben.')) return;
+  if (s) s.grams = r3(s.grams + l.grams);
+  S.logs = S.logs.filter(x => x !== l);
+  save();
+}
+
+function exportData() {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(S)], { type: 'application/json' }));
+  a.download = `kontingent-${today()}.json`;
+  a.click();
+}
+
+function importData(f) {
+  f.text().then(t => {
+    const d = JSON.parse(t);
+    if (!Array.isArray(d.strains) || !Array.isArray(d.logs)) throw 0;
+    if (confirm('Aktuelle Daten durch das Backup ersetzen?')) { S = d; save(); }
+  }).catch(() => alert('Die Datei ist kein gültiges Backup.'));
+}
+
+$('#date').value = today();
+render();
+</script>
+</body>
+</html>
