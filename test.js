@@ -1,6 +1,6 @@
 // node test.js
 const assert = require('node:assert');
-const { parseLabel, budget, dailyAvg, daysSinceLast, activeDays, absorbedMg, addDays, longestBreak, nextMilestone } = require('./logic.js');
+const { parseLabel, budget, dailyAvg, daysSinceLast, activeDays, absorbedMg, addDays, longestBreak, nextMilestone, planLimit, weeksToTarget } = require('./logic.js');
 const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-9, `${a} != ${b}`);
 
 assert.deepStrictEqual(parseLabel('Amnesia Haze\nTHC: 22,5 %\nCBD: <1 %\nInhalt: 10 g'),
@@ -42,5 +42,19 @@ assert.strictEqual(longestBreak(br, '2026-11-12'), 5);
 assert.strictEqual(longestBreak([], '2026-11-12'), 0);
 assert.deepStrictEqual(nextMilestone(3), [7, '1 Woche']);
 assert.strictEqual(nextMilestone(400)[0], 730);
+
+// pause goal: 2026-11-07..09 off, then 10..13 active
+b = budget(4, 0, '2026-11-07', '2026-11-13', [], { start: '2026-11-07', end: '2026-11-10' });
+assert.strictEqual(b.isBreak, true); assert.strictEqual(b.days, 4); near(b.perDay, 1); near(b.leftToday, 0);
+assert.strictEqual(budget(4, 0, '2026-11-10', '2026-11-13', [], { start: '2026-11-07', end: '2026-11-10' }).isBreak, false);
+
+// reduction plan: 0.5 g, -10 % per week, floor 0.3 g
+const plan = { on: true, from: '2026-11-01', start: 0.5, pct: 10, target: 0.3 };
+near(planLimit(plan, '2026-11-07'), 0.5);          // week 1
+near(planLimit(plan, '2026-11-08'), 0.45);         // week 2
+near(planLimit(plan, '2026-11-15'), 0.405);        // week 3
+near(planLimit(plan, '2027-06-01'), 0.3);          // floor
+assert.strictEqual(planLimit({ ...plan, on: false }, '2026-11-08'), null);
+assert.strictEqual(weeksToTarget(plan), 5);        // 0.5*0.9^5 = 0.295 <= 0.3
 
 console.log('ok');

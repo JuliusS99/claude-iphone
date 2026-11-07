@@ -31,18 +31,21 @@ const daysBetween = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5
 const addDays = (d, n) => new Date(Date.parse(d) + n * 864e5).toISOString().slice(0, 10);
 const weekday = d => new Date(Date.parse(d)).getUTCDay(); // 0 = Sunday
 
-function activeDays(from, to, breaks) {
+// A day is off when it is a weekly break day or inside a pause goal { start, end } (end exclusive).
+const isOff = (d, breaks, pause) => breaks.includes(weekday(d)) || !!(pause && d >= pause.start && d < pause.end);
+
+function activeDays(from, to, breaks, pause) {
   let n = 0;
-  for (let d = from; d <= to; d = addDays(d, 1)) if (!breaks.includes(weekday(d))) n++;
+  for (let d = from; d <= to; d = addDays(d, 1)) if (!isOff(d, breaks, pause)) n++;
   return n;
 }
 
 // stock = what is left now, consumedToday = already smoked today (already deducted from stock).
-// breaks = weekdays without consumption; their share is spread over the other days.
-function budget(stock, consumedToday, today, until, breaks = []) {
+// Off days (breaks, pause) get 0 g; their share is spread over the other days.
+function budget(stock, consumedToday, today, until, breaks = [], pause = null) {
   if (until < today) return null;
-  const isBreak = breaks.includes(weekday(today));
-  const days = activeDays(today, until, breaks);
+  const isBreak = isOff(today, breaks, pause);
+  const days = activeDays(today, until, breaks, pause);
   const perDay = days ? (isBreak ? stock : stock + consumedToday) / days : 0;
   return { days, perDay, isBreak, leftToday: (isBreak ? 0 : perDay) - consumedToday };
 }
@@ -71,10 +74,18 @@ function longestBreak(logs, today) {
   return best;
 }
 
+// Reduction plan { on, from, start, pct, target }: daily limit drops by pct every 7 days, never below target.
+function planLimit(plan, d) {
+  if (!plan || !plan.on) return null;
+  const weeks = Math.max(0, Math.floor(daysBetween(plan.from, d) / 7));
+  return Math.max(plan.target, plan.start * (1 - plan.pct / 100) ** weeks);
+}
+const weeksToTarget = p => p.target >= p.start ? 0 : p.pct <= 0 ? Infinity : Math.ceil(Math.log(p.target / p.start) / Math.log(1 - p.pct / 100));
+
 // Next streak goal: [days, label]
 const MILESTONES = [[1, '1 Tag'], [3, '3 Tage'], [7, '1 Woche'], [14, '2 Wochen'], [30, '1 Monat'],
   [60, '2 Monate'], [90, '3 Monate'], [180, '6 Monate'], [365, '1 Jahr']];
 const nextMilestone = days => MILESTONES.find(([d]) => d > days)
   || (y => [y * 365, `${y} Jahre`])(Math.ceil((days + 1) / 365));
 
-if (typeof module !== 'undefined') module.exports = { parseLabel, budget, num, dailyAvg, daysSinceLast, activeDays, absorbedMg, addDays, longestBreak, nextMilestone };
+if (typeof module !== 'undefined') module.exports = { parseLabel, budget, num, dailyAvg, daysSinceLast, activeDays, absorbedMg, addDays, longestBreak, nextMilestone, planLimit, weeksToTarget };

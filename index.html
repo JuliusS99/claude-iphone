@@ -137,6 +137,31 @@
   #dots span.on { background: var(--text); }
   #dots.shake { animation: shake .35s; }
   @keyframes shake { 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
+  .tap { cursor: pointer; } .tap:active { opacity: .6; }
+  .warn { color: var(--danger); }
+  .chips button.on { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+  .row.rev { flex-direction: row-reverse; }
+  .field { display: block; }
+  .field > span { display: block; font-size: 13px; color: var(--muted); margin: 0 2px 4px; }
+  .stars { display: inline-flex; gap: 2px; vertical-align: -3px; margin-left: -2px; }
+  .stars button { padding: 2px; display: grid; place-items: center; }
+  .stars svg { width: 15px; height: 15px; stroke: var(--muted); stroke-width: 1.5; }
+  .stars .on svg { fill: var(--accent); stroke: var(--accent); }
+  .stars.big { gap: 10px; margin: 2px 0 16px; }
+  .stars.big svg { width: 30px; height: 30px; }
+  input.switch { -webkit-appearance: none; appearance: none; flex: none; position: relative; width: 51px; height: 31px; min-height: 0;
+            margin: 0; padding: 0; border: 0; border-radius: 16px; background: var(--track); transition: background .2s; }
+  input.switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%;
+                   background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,.2); transition: transform .2s; }
+  input.switch:checked { background: var(--accent); }
+  input.switch:checked::after { transform: translateX(20px); }
+  input.switch:focus { outline: none; }
+  #toast { position: fixed; left: 16px; right: 16px; bottom: calc(env(safe-area-inset-bottom) + 72px); z-index: 20;
+           max-width: 528px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+           padding: 14px 16px; border-radius: 12px; background: #2c2c2e; color: #fff; font-size: 15px;
+           box-shadow: 0 8px 24px rgba(0,0,0,.25); transition: opacity .2s, transform .2s; }
+  #toast[hidden] { display: flex; opacity: 0; transform: translateY(12px); pointer-events: none; }
+  #toast button { color: #75f2a4; font-weight: 600; flex: none; }
   .pad { display: grid; grid-template-columns: repeat(3, 76px); gap: 16px 24px; }
   .pad button { height: 76px; border-radius: 50%; background: var(--card); color: var(--text); font-size: 30px; font-weight: 300; }
   .pad button:active { background: var(--raised); opacity: .7; }
@@ -157,6 +182,7 @@
     <div id="left" class="hero-num"></div>
     <div id="meter" class="meter"><div></div></div>
     <div id="note" class="muted small" style="margin-top:8px"></div>
+    <div id="stockWarn" class="small warn" style="margin-top:4px" hidden></div>
     <div class="stats">
       <div><div class="eyebrow">Pro Tag</div><div id="perDay" class="stat"></div></div>
       <div><div class="eyebrow">Konsumtage</div><div id="days" class="stat"></div></div>
@@ -270,6 +296,10 @@
   <div class="card" id="amounts"></div>
   <p class="hint">Wird beim Erfassen automatisch eingetragen. Edibles: Gras pro Stück, z. B. 1 g auf 10 Stück = 0,1 g.</p>
 
+  <h2>Reduktionsplan</h2>
+  <div class="card" id="plan"></div>
+  <p class="hint" id="planNote"></p>
+
   <h2>Sichtschutz</h2>
   <div class="card">
     <div class="line first"><span>PIN-Sperre</span><button id="pinBtn" onclick="togglePin()"></button></div>
@@ -293,14 +323,17 @@
   <button data-go="einstellungen"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>Einstellungen</button>
 </nav>
 
-<dialog id="dlg">
-  <form method="dialog">
-    <div class="dlg-title" id="dlgTitle"></div>
-    <input id="dlgGrams" inputmode="decimal" placeholder="Gramm" aria-label="Gramm">
-    <input id="dlgPrice" inputmode="decimal" placeholder="Preis gesamt € (optional)" aria-label="Preis gesamt in Euro">
-    <div class="row"><button value="cancel" class="secondary">Abbrechen</button><button value="ok" class="primary">Hinzufügen</button></div>
+<dialog id="edit">
+  <form method="dialog" id="editForm">
+    <div class="dlg-title" id="editTitle"></div>
+    <div id="editBody"></div>
+    <!-- ok first in the DOM so the keyboard's return key saves; shown on the right -->
+    <div class="row rev"><button value="ok" class="primary" id="editOk"></button><button value="cancel" class="secondary">Abbrechen</button></div>
+    <button value="del" class="danger" id="editDel" style="width:100%;margin-top:16px;padding:6px">Löschen</button>
   </form>
 </dialog>
+
+<div id="toast" role="status" hidden><span id="toastMsg"></span><button id="toastUndo">Rückgängig</button></div>
 
 <div id="lock" hidden>
   <div id="lockTitle"></div>
@@ -334,9 +367,56 @@ const r3 = x => Math.round(x * 1000) / 1000; // avoid float drift in stock
 const esc = s => String(s).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 const day = (d, o) => new Date(d + 'T12:00').toLocaleDateString('de-DE', o);
 const X = '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+const STAR = '<svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.25 4.1 1 5.8L12 16.9l-5.25 2.7 1-5.8L3.5 9.7l5.9-.9z"/></svg>';
+const stars = (r, big) => `<span class="stars${big ? ' big' : ''}">${[1, 2, 3, 4, 5].map(i =>
+  `<button type="button" data-star="${i}" class="${i <= r ? 'on' : ''}" aria-label="${i} von 5 Sternen">${STAR}</button>`).join('')}</span>`;
+const tage = x => `${x} ${x === 1 ? 'Tag' : 'Tage'}`;
+// Number field that keeps the exact stored value if the user left the rounded display untouched.
+const keep = (id, old, shown) => $(id).value === shown ? old : num($(id).value);
 let month = today().slice(0, 7), shownDay = today();
 
-function save() { localStorage.setItem(KEY, JSON.stringify(S)); render(); }
+function save() { localStorage.setItem(KEY, JSON.stringify(S)); hideToast(); render(); }
+
+// Undo: snapshot the state, apply the change, offer to restore for 5 s. Any later save drops the offer.
+let toastTimer, undoSnap = null;
+function withUndo(msg, change) {
+  const snap = JSON.stringify(S);
+  change();
+  save();
+  undoSnap = snap;
+  $('#toastMsg').textContent = msg;
+  $('#toast').hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, 5000);
+}
+function hideToast() { $('#toast').hidden = true; undoSnap = null; }
+$('#toastUndo').onclick = () => {
+  if (!undoSnap) return;
+  S = JSON.parse(undoSnap);
+  save();
+};
+
+// One dialog for all edit forms. onSave returns false to keep the dialog open (invalid input).
+let onSave = null, onDel = null;
+function openEdit(title, html, save, del, okLabel = 'Speichern') {
+  onSave = save; onDel = del;
+  $('#editTitle').textContent = title;
+  $('#editBody').innerHTML = html;
+  $('#editBody').onclick = null;
+  $('#editOk').textContent = okLabel;
+  $('#editDel').hidden = !del;
+  $('#edit').showModal();
+}
+$('#editForm').onsubmit = e => {
+  const v = e.submitter?.value;
+  if (v === 'ok' && onSave() === false) e.preventDefault();
+  if (v === 'del') onDel();
+};
+// segmented control / star picker inside the dialog
+const pick = (sel, attr) => e => {
+  const b = e.target.closest(`[${attr}]`);
+  if (b) $$(`#editBody ${sel} [${attr}]`).forEach(x => x.classList.toggle('on', attr === 'data-star' ? +x.dataset.star <= +b.dataset.star : x === b));
+};
 
 function show(tab) {
   $$('[data-tab]').forEach(s => s.hidden = s.dataset.tab !== tab);
@@ -347,38 +427,47 @@ function show(tab) {
 }
 $('#nav').onclick = e => { const b = e.target.closest('button'); if (b) show(b.dataset.go); };
 
-const logRow = (l, when) => `<div class="item"><div class="date">${when}</div>
+const logRow = (l, when) => `<div class="item tap" data-lid="${l.id}"><div class="date">${when}</div>
   <div class="grow"><div class="name">${esc(l.name)}</div>
     <div class="muted small">${l.form || 'Joint'} · ca. ${Math.round(absorbedMg(l))} mg THC${l.price ? ' · ' + eur(l.grams * l.price) : ''}</div></div>
   <div class="amount">${g(l.grams)}</div>
-  <button class="icon" aria-label="Eintrag löschen" onclick="delLog(${l.id})">${X}</button></div>`;
+  <button class="icon" aria-label="Eintrag löschen" data-del>${X}</button></div>`;
 
 function render() {
   const t = today(), until = S.until || eom();
   const stock = S.strains.reduce((a, s) => a + s.grams, 0);
   const todays = S.logs.filter(l => l.date === t);
   const todayG = sum(todays);
-  const b = budget(stock, todayG, t, until, S.breaks);
+  const b = budget(stock, todayG, t, until, S.breaks, S.pause);
   const avg = dailyAvg(S.logs, t);
   const last = daysSinceLast(S.logs, t);
+  const lim = planLimit(S.plan, t), planned = b && lim !== null && lim < b.perDay;
+  const perDay = b ? (planned ? lim : b.perDay) : 0, left = b ? (b.isBreak ? 0 : perDay) - todayG : 0;
+  const inPause = S.pause && t >= S.pause.start && t < S.pause.end;
 
   // Heute
   $('#todayLabel').textContent = day(t, { weekday: 'long', day: 'numeric', month: 'long' });
   $('#until').value = until;
   $('#total').textContent = g(stock);
-  const over = b && b.leftToday < -1e-9;
-  $('#heroLabel').textContent = b?.isBreak ? 'Pausentag' : 'Heute verfügbar';
-  $('#left').textContent = b ? g(Math.max(b.leftToday, 0)) : '–';
+  const over = b && left < -1e-9;
+  $('#heroLabel').textContent = inPause ? 'Pausenziel' : b?.isBreak ? 'Pausentag' : planned ? 'Heute verfügbar · Reduktionsplan' : 'Heute verfügbar';
+  $('#left').textContent = b ? g(Math.max(left, 0)) : '–';
   $('#left').classList.toggle('over', !!over);
   $('#meter').classList.toggle('over', !!over);
-  $('#meter').firstChild.style.width = (!b ? 0 : b.isBreak ? (todayG ? 100 : 0) : b.perDay > 0 ? Math.min(todayG / b.perDay, 1) * 100 : 0) + '%';
+  $('#meter').firstChild.style.width = (!b ? 0 : b.isBreak ? (todayG ? 100 : 0) : perDay > 0 ? Math.min(todayG / perDay, 1) * 100 : 0) + '%';
   $('#note').innerHTML = !b ? '<span class="over">Das Zieldatum liegt in der Vergangenheit.</span>'
     : over && b.isBreak ? `<span class="over">Am Pausentag ${g(todayG)} erfasst</span>`
-    : over ? `<span class="over">Tagesbudget um ${g(-b.leftToday)} überschritten</span>`
+    : over ? `<span class="over">Tagesbudget um ${g(-left)} überschritten</span>`
+    : inPause ? `Tag ${daysBetween(S.pause.start, t) + 1} von ${S.pause.days} deines Pausenziels.`
     : b.isBreak ? 'Heute ist ein geplanter Pausentag.'
     : todayG ? `Heute erfasst: ${g(todayG)}`
     : 'Heute noch nichts erfasst';
-  $('#perDay').textContent = b ? g(b.perDay) : '–';
+  $('#perDay').textContent = b ? g(perDay) : '–';
+  const runDays = avg && avg.grams > 0 ? Math.floor(stock / avg.grams) : null;
+  $('#stockWarn').hidden = !S.strains.length || !(stock <= 0 || (runDays !== null && runDays <= 5));
+  $('#stockWarn').textContent = stock <= 0 ? 'Dein Bestand ist leer.'
+    : runDays === 0 ? 'Bei deinem Tempo reicht der Bestand nur noch heute.'
+    : `Bei deinem Tempo reicht der Bestand nur noch ca. ${tage(runDays)}.`;
   $('#days').textContent = b ? b.days : '–';
 
   $('#strain').innerHTML = S.strains.map(s => `<option value="${s.id}">${esc(s.name)} — ${g(s.grams)}</option>`).join('')
@@ -396,11 +485,10 @@ function render() {
   $('#stockValue').textContent = eur(S.strains.reduce((a, s) => a + s.grams * (s.price || 0), 0));
   $('#runout').textContent = avg && avg.grams > 0 && stock > 0
     ? day(addDays(t, Math.floor(stock / avg.grams)), { day: 'numeric', month: 'short' }) : '–';
-  $('#stock').innerHTML = S.strains.map(s => `<div class="item"><div class="grow">
+  $('#stock').innerHTML = S.strains.map(s => `<div class="item tap" data-sid="${s.id}"><div class="grow">
       <div class="name">${esc(s.name)}</div>
       <div class="muted small">THC ${n(s.thc)} % · CBD ${n(s.cbd)} %${s.price ? ' · ' + eur(s.price) + '/g' : ''}</div>
-      <div class="actions"><button onclick="restock(${s.id})">Nachfüllen</button>
-        <button class="danger" onclick="delStrain(${s.id})">Entfernen</button></div>
+      <div class="actions">${stars(s.rating || 0)}<button data-restock>Nachfüllen</button></div>
     </div><div class="amount">${g(s.grams)}</div></div>`).join('')
     || '<p class="empty">Noch keine Sorte erfasst.</p>';
 
@@ -408,7 +496,7 @@ function render() {
   $('#avgGrams').textContent = avg ? g(avg.grams) : '–';
   $('#avgCost').textContent = avg ? eur(avg.cost) : '–';
   $('#avgMonth').textContent = avg ? eur(avg.cost * 30) : '–';
-  const diff = avg && b && b.perDay > 0 ? Math.round((avg.grams / b.perDay - 1) * 100) : null;
+  const diff = avg && b && perDay > 0 ? Math.round((avg.grams / perDay - 1) * 100) : null;
   $('#avgNote').textContent = !avg ? 'Erscheint nach dem ersten Eintrag.'
     : `Durchschnitt pro Tag über die letzten ${avg.days} ${avg.days === 1 ? 'Tag' : 'Tage'}.`
       + (diff === null ? '' : diff > 0 ? ` Du liegst ${diff} % über deinem Budget.` : ` Du liegst ${-diff} % unter deinem Budget.`);
@@ -433,27 +521,65 @@ function render() {
   if (!$('#amounts').contains(document.activeElement)) // don't re-render under the user's cursor
     $('#amounts').innerHTML = Object.keys(FORMS).map((f, i) => `<label class="line${i ? '' : ' first'}"><span>1 ${f}</span>
       <span><input inputmode="decimal" data-a="${f}" value="${n(S.amounts[f])}" aria-label="Gramm pro ${f}" size="5"> g</span></label>`).join('');
+  const P = S.plan;
+  if (!$('#plan').contains(document.activeElement))
+    $('#plan').innerHTML = `<label class="line first"><span>Aktiv</span><input type="checkbox" class="switch" id="planOn"${P?.on ? ' checked' : ''}></label>`
+      + (P?.on ? [['start', 'Start', 'g/Tag'], ['pct', 'Senkung pro Woche', '%'], ['target', 'Ziel', 'g/Tag']].map(([k, label, unit]) =>
+        `<label class="line"><span>${label}</span><span><input inputmode="decimal" data-p="${k}" value="${n(P[k])}" size="4" aria-label="${label}"> ${unit}</span></label>`).join('') : '');
+  const wt = P?.on ? weeksToTarget(P) : 0;
+  $('#planNote').textContent = lim === null ? 'Senkt dein Tageslimit automatisch Woche für Woche bis zu einem Ziel. Gilt zusätzlich zum Bestand-Budget, der kleinere Wert zählt.'
+    : `Woche ${Math.floor(daysBetween(P.from, t) / 7) + 1}: höchstens ${g(lim)} pro Tag.`
+      + (lim <= P.target ? ' Ziel erreicht.' : isFinite(wt) ? ` Ziel ab Woche ${wt + 1}.` : '');
   $('#pinBtn').textContent = S.pin ? 'Entfernen' : 'Einrichten';
   $('#pinBtn').classList.toggle('danger', !!S.pin);
 }
 
 function renderStreak(t, last) {
-  const best = longestBreak(S.logs, t), tage = x => `${x} ${x === 1 ? 'Tag' : 'Tage'}`;
-  if (last === null) { $('#streak').innerHTML = '<p class="empty">Der Zähler startet mit deinem ersten Eintrag.</p>'; return; }
-  if (last === 0) {
+  const best = longestBreak(S.logs, t), P = S.pause;
+  const btn = `<div class="actions" style="margin-top:12px">${P && t < P.end
+    ? '<button class="danger" onclick="endPause()">Pausenziel beenden</button>'
+    : `<button onclick="setPause()">${P ? 'Neues Pausenziel' : 'Pausenziel setzen'}</button>`}</div>`;
+  if (last === null && !P) { $('#streak').innerHTML = '<p class="empty">Der Zähler startet mit deinem ersten Eintrag.</p>'; return; }
+  const lastDate = last ? addDays(t, -last) : null, before = lastDate && dailyAvg(S.logs, lastDate); // spending before the break
+  const saved = before && before.cost * last >= 0.5 ? ` · ca. ${eur(before.cost * last)} gespart` : '';
+  const longDay = d => day(d, { weekday: 'long', day: 'numeric', month: 'long' });
+
+  if (P && t < P.start) {
+    $('#streak').innerHTML = `<div class="streak-num">${P.days} <span>Tage Ziel</span></div>
+      <div class="muted small">Die Pause startet morgen.</div>${btn}`;
+  } else if (P && t < P.end) {
+    const dayN = daysBetween(P.start, t) + 1, rest = P.days - dayN;
+    $('#streak').innerHTML = `<div class="streak-num">${dayN} <span>von ${P.days} Tagen</span></div>
+      <div class="muted small">Pausenziel bis ${longDay(addDays(P.end, -1))}${saved}</div>
+      <div class="meter" style="margin-top:14px"><div style="width:${dayN / P.days * 100}%"></div></div>
+      <div class="foot"><span>${rest ? `Noch ${tage(rest)}` : 'Heute ist der letzte Tag'}</span>
+        <span class="${last >= best ? 'accent' : ''}">${last >= best ? 'Neuer Rekord' : 'Rekord ' + tage(best)}</span></div>${btn}`;
+  } else if (!last) {
     $('#streak').innerHTML = `<div class="streak-num">0 <span>Tage</span></div>
       <div class="muted small">Heute konsumiert. Der Zähler startet morgen neu.</div>
-      <div class="foot"><span>Rekord</span><span>${tage(best)}</span></div>`;
-    return;
+      <div class="foot"><span>Rekord</span><span>${tage(best)}</span></div>${btn}`;
+  } else {
+    const [goal, label] = nextMilestone(last), prev = MILESTONES.filter(([d]) => d <= last).pop()?.[0] || 0;
+    $('#streak').innerHTML = `<div class="streak-num">${last} <span>${last === 1 ? 'Tag' : 'Tage'}</span></div>
+      <div class="muted small">${P ? `<span class="accent">Pausenziel von ${tage(P.days)} erreicht</span> · ` : ''}seit ${longDay(addDays(lastDate, 1))}${saved}</div>
+      <div class="meter" style="margin-top:14px"><div style="width:${(last - prev) / (goal - prev) * 100}%"></div></div>
+      <div class="foot"><span>Noch ${tage(goal - last)} bis ${label}</span>
+        <span class="${last >= best ? 'accent' : ''}">${last >= best ? 'Neuer Rekord' : 'Rekord ' + tage(best)}</span></div>${btn}`;
   }
-  const lastDate = addDays(t, -last), before = dailyAvg(S.logs, lastDate); // spending habit before the break
-  const saved = before ? before.cost * last : 0, [goal, label] = nextMilestone(last), prev = MILESTONES.filter(([d]) => d <= last).pop()?.[0] || 0;
-  $('#streak').innerHTML = `<div class="streak-num">${last} <span>${last === 1 ? 'Tag' : 'Tage'}</span></div>
-    <div class="muted small">seit ${day(addDays(lastDate, 1), { weekday: 'long', day: 'numeric', month: 'long' })}${saved >= 0.5 ? ` · ca. ${eur(saved)} gespart` : ''}</div>
-    <div class="meter" style="margin-top:14px"><div style="width:${(last - prev) / (goal - prev) * 100}%"></div></div>
-    <div class="foot"><span>Noch ${tage(goal - last)} bis ${label}</span>
-      <span class="${last >= best ? 'accent' : ''}">${last >= best ? 'Neuer Rekord' : 'Rekord ' + tage(best)}</span></div>`;
 }
+
+function setPause() {
+  openEdit('Pausenziel', `<div class="chips" id="eDaysPick">${[3, 7, 14, 30].map(d => `<button type="button" data-days="${d}">${d} Tage</button>`).join('')}</div>
+    <label class="field"><span>Oder eigene Anzahl Tage</span><input id="eDays" inputmode="numeric" placeholder="z. B. 21"></label>
+    <p class="hint" style="margin:0 2px 14px">Bereits konsumfreie Tage zählen mit. Während der Pause ist dein Budget 0 g.</p>`, () => {
+    const d = parseInt($('#eDays').value, 10);
+    if (!(d > 0)) return alert('Bitte eine Anzahl Tage wählen.'), false;
+    const t = today(), last = daysSinceLast(S.logs, t), start = last === null ? t : last === 0 ? addDays(t, 1) : addDays(t, 1 - last);
+    withUndo(`Pausenziel: ${tage(d)}`, () => S.pause = { start, end: addDays(start, d), days: d });
+  }, null, 'Starten');
+  $('#editBody').onclick = e => { const b = e.target.closest('[data-days]'); if (b) { $('#eDays').value = b.dataset.days; pick('#eDaysPick', 'data-days')(e); } };
+}
+function endPause() { withUndo('Pausenziel beendet', () => S.pause = null); }
 
 function renderMonth(t) {
   const [y, m] = month.split('-').map(Number);
@@ -494,6 +620,32 @@ $('#amounts').onchange = e => {
   e.target.blur();
   save();
 };
+$('#plan').onchange = e => {
+  const t = today();
+  if (e.target.id === 'planOn') {
+    const start = Math.round((dailyAvg(S.logs, t)?.grams || 0.5) * 100) / 100 || 0.5;
+    S.plan = e.target.checked ? { start, pct: 10, target: Math.round(start * 50) / 100, ...S.plan, on: true, from: t } : { ...S.plan, on: false };
+  } else {
+    const k = e.target.dataset.p, x = num(e.target.value);
+    if (x >= 0 && (k !== 'pct' || x < 100) && (k !== 'start' || x > 0)) S.plan[k] = x;
+  }
+  e.target.blur();
+  save();
+};
+$('#stock').onclick = e => {
+  const row = e.target.closest('[data-sid]');
+  if (!row) return;
+  const s = S.strains.find(x => x.id === +row.dataset.sid), star = e.target.closest('[data-star]');
+  if (star) { const r = +star.dataset.star; s.rating = s.rating === r ? 0 : r; save(); }
+  else if (e.target.closest('[data-restock]')) restock(s);
+  else editStrain(s);
+};
+$('#todayLogs').onclick = $('#logs').onclick = e => {
+  const row = e.target.closest('[data-lid]');
+  if (!row) return;
+  const l = S.logs.find(x => x.id === +row.dataset.lid);
+  e.target.closest('[data-del]') ? delLog(l) : editLog(l);
+};
 $('#breaks').onclick = e => {
   const d = e.target.dataset.d;
   if (d == null) return;
@@ -517,27 +669,36 @@ function addStrain() {
   save();
 }
 
-let restockId = null;
-function restock(id) {
-  restockId = id;
-  $('#dlgTitle').textContent = S.strains.find(s => s.id === id).name + ' nachfüllen';
-  $('#dlgGrams').value = $('#dlgPrice').value = '';
-  $('#dlg').returnValue = '';
-  $('#dlg').showModal();
+function restock(s) {
+  openEdit(`${s.name} nachfüllen`, `<input id="eGrams" inputmode="decimal" placeholder="Gramm" aria-label="Gramm">
+    <input id="ePrice" inputmode="decimal" placeholder="Preis gesamt € (optional)" aria-label="Preis gesamt in Euro">`, () => {
+    const x = num($('#eGrams').value), p = num($('#ePrice').value);
+    if (!(x > 0)) return alert('Bitte eine Menge in Gramm angeben.'), false;
+    withUndo(`${g(x)} ${s.name} nachgefüllt`, () => {
+      s.price = (s.grams * (s.price || 0) + (p > 0 ? p : x * (s.price || 0))) / (s.grams + x); // weighted average price
+      s.grams = r3(s.grams + x);
+    });
+  }, null, 'Hinzufügen');
 }
-$('#dlg').onclose = () => {
-  const s = S.strains.find(s => s.id === restockId), x = num($('#dlgGrams').value), p = num($('#dlgPrice').value);
-  if ($('#dlg').returnValue !== 'ok' || !s) return;
-  if (!(x > 0)) return alert('Bitte eine Menge in Gramm angeben.');
-  // weighted average price of old and new stock
-  s.price = (s.grams * (s.price || 0) + (p > 0 ? p : x * (s.price || 0))) / (s.grams + x);
-  s.grams = r3(s.grams + x);
-  save();
-};
 
-function delStrain(id) {
-  const s = S.strains.find(s => s.id === id);
-  if (confirm(`${s.name} aus dem Bestand entfernen? Der Verlauf bleibt erhalten.`)) { S.strains = S.strains.filter(x => x !== s); save(); }
+function editStrain(s) {
+  const shownG = n(s.grams), shownP = s.price ? n(s.price) : '';
+  openEdit('Sorte bearbeiten', `<label class="field"><span>Name</span><input id="eName" value="${esc(s.name)}"></label>
+    <div class="row"><label class="field"><span>THC %</span><input id="eThc" inputmode="decimal" value="${n(s.thc)}"></label>
+      <label class="field"><span>CBD %</span><input id="eCbd" inputmode="decimal" value="${n(s.cbd)}"></label></div>
+    <div class="row"><label class="field"><span>Bestand in g</span><input id="eGrams" inputmode="decimal" value="${shownG}"></label>
+      <label class="field"><span>Preis pro g in €</span><input id="ePrice" inputmode="decimal" value="${shownP}"></label></div>
+    <span class="field"><span>Bewertung</span></span><div id="eStars">${stars(s.rating || 0, true)}</div>`, () => {
+    const name = $('#eName').value.trim(), grams = keep('#eGrams', s.grams, shownG);
+    if (!name || !(grams >= 0)) return alert('Bitte Name und Bestand angeben.'), false;
+    const thc = num($('#eThc').value) || 0;
+    withUndo('Sorte gespeichert', () => {
+      Object.assign(s, { name, thc, cbd: num($('#eCbd').value) || 0, grams: r3(grams),
+        price: keep('#ePrice', s.price, shownP) || 0, rating: $$('#eStars .on').length });
+      S.logs.forEach(l => { if (l.strainId === s.id) Object.assign(l, { name, thc }); }); // corrections apply to history too
+    });
+  }, () => withUndo(`${s.name} entfernt`, () => S.strains = S.strains.filter(x => x !== s)));
+  $('#editBody').onclick = pick('#eStars', 'data-star');
 }
 
 function logUse() {
@@ -545,19 +706,37 @@ function logUse() {
   if (!s) return alert('Bitte zuerst eine Sorte zum Bestand hinzufügen.');
   if (!(x > 0)) return alert('Bitte eine Menge in Gramm angeben.');
   if (x > s.grams + 1e-9) return alert(`Im Bestand sind nur noch ${g(s.grams)} ${s.name}.`);
-  s.grams = r3(s.grams - x);
-  S.logs.push({ id: Date.now(), strainId: s.id, name: s.name, thc: s.thc, price: s.price || 0,
-                form: S.form, grams: x, date: $('#date').value || today() });
-  save();
+  const date = $('#date').value || today(), endsPause = S.pause && date >= S.pause.start && date < S.pause.end;
+  withUndo(`${g(x)} erfasst${endsPause ? ' · Pausenziel beendet' : ''}`, () => {
+    s.grams = r3(s.grams - x);
+    S.logs.push({ id: Date.now(), strainId: s.id, name: s.name, thc: s.thc, price: s.price || 0, form: S.form, grams: x, date });
+    if (S.pause && date >= S.pause.start) S.pause = null; // goal broken or already reached
+  });
   fillAmount();
 }
 
-function delLog(id) {
-  const l = S.logs.find(l => l.id === id), s = S.strains.find(s => s.id === l.strainId);
-  if (!confirm('Eintrag löschen? Die Menge wird dem Bestand wieder gutgeschrieben.')) return;
-  if (s) s.grams = r3(s.grams + l.grams);
-  S.logs = S.logs.filter(x => x !== l);
-  save();
+function editLog(l) {
+  const s = S.strains.find(x => x.id === l.strainId), shownG = n(l.grams);
+  openEdit('Eintrag bearbeiten', `<div class="row"><label class="field"><span>Menge in g</span><input id="eGrams" inputmode="decimal" value="${shownG}"></label>
+      <label class="field"><span>Datum</span><input type="date" id="eDate" value="${l.date}"></label></div>
+    <div class="seg" id="eForm">${Object.keys(FORMS).map(f => `<button type="button" data-f="${f}" class="${f === (l.form || 'Joint') ? 'on' : ''}">${f}</button>`).join('')}</div>`, () => {
+    const x = keep('#eGrams', l.grams, shownG);
+    if (!(x > 0)) return alert('Bitte eine Menge in Gramm angeben.'), false;
+    if (s && x - l.grams > s.grams + 1e-9) return alert(`Im Bestand sind nur noch ${g(s.grams)} ${s.name}.`), false;
+    withUndo('Eintrag gespeichert', () => {
+      if (s) s.grams = r3(s.grams + l.grams - x);
+      Object.assign(l, { grams: x, date: $('#eDate').value || l.date, form: $('#eForm .on').dataset.f });
+    });
+  }, () => delLog(l));
+  $('#editBody').onclick = pick('#eForm', 'data-f');
+}
+
+function delLog(l) {
+  withUndo('Eintrag gelöscht', () => {
+    const s = S.strains.find(s => s.id === l.strainId);
+    if (s) s.grams = r3(s.grams + l.grams);
+    S.logs = S.logs.filter(x => x !== l);
+  });
 }
 
 function exportData() {
@@ -621,6 +800,7 @@ function togglePin() {
 // Lock when the app goes to the background, so the app switcher shows nothing; refresh "today" on return.
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
+    hideToast();
     if (S.pin && pinMode !== 'set' && pinMode !== 'confirm') { $$('dialog[open]').forEach(d => d.close()); openLock('unlock'); }
   } else if (shownDay !== today()) {
     $('#date').value = shownDay = today();
