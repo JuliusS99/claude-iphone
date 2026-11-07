@@ -12,39 +12,45 @@
 <title>Kontingent</title>
 <style>
   :root {
-    --bg: #f2f2f7; --card: #fff; --text: #111113; --muted: #6e6e73; --line: #e3e3e8;
-    --accent: #2f6b4f; --track: #e8e8ed; --danger: #c4372f;
+    --bg: #f2f2f7; --card: #fff; --raised: #fff; --text: #111113; --muted: #6e6e73; --line: #e3e3e8;
+    --accent: #2f6b4f; --on-accent: #fff; --track: #e8e8ed; --danger: #c4372f;
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #000; --card: #1c1c1e; --text: #f2f2f7; --muted: #8e8e93; --line: #2c2c2e;
-            --accent: #5fb98a; --track: #2c2c2e; --danger: #ff6b61; color-scheme: dark; }
+    :root { --bg: #000; --card: #1c1c1e; --raised: #3a3a3c; --text: #f2f2f7; --muted: #8e8e93; --line: #2c2c2e;
+            --accent: #5fb98a; --on-accent: #000; --track: #2c2c2e; --danger: #ff6b61; color-scheme: dark; }
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body { margin: 0 auto; max-width: 560px; background: var(--bg); color: var(--text);
          font: 17px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
          font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
-         padding: calc(env(safe-area-inset-top) + 20px) 16px calc(env(safe-area-inset-bottom) + 48px); }
+         padding: calc(env(safe-area-inset-top) + 20px) 16px calc(env(safe-area-inset-bottom) + 96px); }
   header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 20px; }
   h1 { font-size: 30px; font-weight: 700; letter-spacing: -.02em; margin: 0; }
   h2 { font-size: 13px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em;
        color: var(--muted); margin: 28px 4px 8px; }
+  section > h2:first-child { margin-top: 0; }
   .card { background: var(--card); border-radius: 14px; padding: 16px; }
+  .card + .card { margin-top: 10px; }
   .muted { color: var(--muted); } .small { font-size: 14px; }
   .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .hint { font-size: 13px; color: var(--muted); margin: 10px 4px 0; line-height: 1.4; }
+  .card .hint { margin: 12px 0 0; }
 
   .hero-num { font-size: 52px; font-weight: 600; letter-spacing: -.03em; margin: 4px 0 12px; }
   .over { color: var(--danger); }
   .meter { height: 4px; background: var(--track); border-radius: 2px; overflow: hidden; }
-  .meter > div { height: 100%; background: var(--accent); transition: width .3s; }
+  .meter > div { height: 100%; background: var(--accent); }
   .meter.over > div { background: var(--danger); }
   .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 20px 0 4px;
            padding-top: 16px; border-top: 1px solid var(--line); }
-  .stat { font-size: 19px; font-weight: 600; margin-top: 2px; }
+  .stats.bare { margin: 0; padding: 0; border: 0; }
+  .stat { font-size: 19px; font-weight: 600; margin-top: 2px; white-space: nowrap; }
 
-  .line { display: flex; justify-content: space-between; align-items: center; min-height: 44px;
+  .line { display: flex; justify-content: space-between; align-items: center; min-height: 44px; gap: 12px;
           border-top: 1px solid var(--line); margin-top: 12px; padding-top: 4px; }
-  .line input { width: auto; border: 0; background: none; padding: 0; margin: 0; text-align: right; color: var(--accent); }
+  .line.first { border: 0; margin: 0; padding: 0; }
+  .line input { width: auto; border: 0; background: none; padding: 0; margin: 0; min-height: 0; text-align: right; color: var(--accent); }
 
   input, select, textarea { font: inherit; width: 100%; padding: 12px; margin: 0 0 10px; border-radius: 10px;
          border: 1px solid var(--line); background: var(--bg); color: var(--text); appearance: none; -webkit-appearance: none; }
@@ -53,11 +59,16 @@
   input[type=date] { min-height: 47px; }
   .row { display: flex; gap: 10px; } .row > * { flex: 1; min-width: 0; }
   button { font: inherit; cursor: pointer; border: 0; background: none; color: var(--accent); padding: 0; }
-  .primary { width: 100%; padding: 14px; border-radius: 12px; background: var(--accent); color: #fff; font-weight: 600; }
-  @media (prefers-color-scheme: dark) { .primary { color: #000; } }
-  .primary:active, .chips button:active { opacity: .7; }
+  button:disabled { opacity: .3; cursor: default; }
+  .primary { width: 100%; padding: 14px; border-radius: 12px; background: var(--accent); color: var(--on-accent); font-weight: 600; }
+  .secondary { width: 100%; padding: 14px; border-radius: 12px; background: var(--bg); color: var(--text); font-weight: 600; }
+  .primary:active, .secondary:active, .chips button:active, .seg button:active { opacity: .7; }
+
   .chips { display: flex; gap: 8px; margin-bottom: 10px; }
   .chips button { flex: 1; padding: 10px 0; border-radius: 10px; background: var(--bg); color: var(--text); font-size: 15px; }
+  .seg { display: flex; padding: 3px; margin-bottom: 10px; border-radius: 10px; background: var(--bg); }
+  .seg button { flex: 1; padding: 8px 0; border-radius: 8px; color: var(--text); font-size: 15px; }
+  .seg button.on { background: var(--raised); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
 
   .item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
   .item:first-child { border-top: 0; padding-top: 0; } .item:last-child { padding-bottom: 0; }
@@ -66,9 +77,9 @@
   .amount { font-weight: 600; white-space: nowrap; }
   .actions { display: flex; gap: 16px; margin-top: 6px; font-size: 14px; }
   .danger { color: var(--danger); }
-  .icon { width: 32px; height: 32px; display: grid; place-items: center; color: var(--muted); margin-right: -6px; }
-  .icon svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; fill: none; }
-  .date { width: 64px; flex: none; color: var(--muted); font-size: 15px; }
+  .icon { width: 32px; height: 32px; flex: none; display: grid; place-items: center; color: var(--muted); margin-right: -6px; }
+  svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+  .date { width: 52px; flex: none; color: var(--muted); font-size: 15px; }
   .empty { color: var(--muted); font-size: 15px; margin: 0; }
 
   .chart { display: flex; align-items: flex-end; gap: 8px; height: 120px; }
@@ -76,151 +87,373 @@
   .bar { width: 100%; background: var(--track); border-radius: 4px; min-height: 2px; }
   .bar.today { background: var(--accent); }
   .col span { font-size: 12px; color: var(--muted); }
-  .chart-foot { display: flex; justify-content: space-between; margin-top: 14px; padding-top: 12px;
-                border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); }
+  .foot { display: flex; justify-content: space-between; margin-top: 14px; padding-top: 12px;
+          border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); }
+
+  .month-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-weight: 600; }
+  .month-head button { width: 36px; height: 32px; display: grid; place-items: center; }
+  .month-head svg { width: 20px; height: 20px; }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal-h { font-size: 11px; color: var(--muted); text-align: center; padding-bottom: 2px; }
+  .cal-d { aspect-ratio: 1; display: grid; place-items: center; border-radius: 8px; font-size: 13px; background: var(--track); }
+  .cal-d.strong { color: var(--on-accent); font-weight: 600; }
+  .cal-d.today { box-shadow: inset 0 0 0 1.5px var(--text); }
+  .cal-d.future { background: none; color: var(--muted); opacity: .5; }
+
+  .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .days button { padding: 10px 0; border-radius: 10px; background: var(--bg); color: var(--text); font-size: 15px; }
+  .days button.on { background: var(--accent); color: var(--on-accent); font-weight: 600; }
 
   details > summary { list-style: none; cursor: pointer; font-weight: 500; color: var(--accent); }
   details > summary::-webkit-details-marker { display: none; }
   details[open] > summary { margin-bottom: 14px; }
-  .hint { font-size: 13px; color: var(--muted); margin: 0 0 6px; }
+
+  nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: flex; justify-content: center;
+        padding-bottom: env(safe-area-inset-bottom); border-top: 1px solid var(--line);
+        background: color-mix(in srgb, var(--card) 82%, transparent); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+  nav button { flex: 1; max-width: 140px; padding: 8px 0 6px; display: flex; flex-direction: column; align-items: center; gap: 3px;
+               font-size: 11px; font-weight: 500; color: var(--muted); }
+  nav button.on { color: var(--accent); }
+  nav svg { width: 24px; height: 24px; stroke-width: 1.7; }
+
+  dialog { border: 0; border-radius: 14px; padding: 20px; width: min(92vw, 400px); background: var(--card); color: var(--text); }
+  dialog::backdrop { background: rgba(0,0,0,.4); }
+  .dlg-title { font-weight: 600; font-size: 19px; margin-bottom: 14px; }
+
+  #lock { position: fixed; inset: 0; z-index: 100; background: var(--bg); display: flex; flex-direction: column;
+          align-items: center; justify-content: center; gap: 28px; padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom); }
+  #lock[hidden] { display: none; }
+  #lockTitle { font-size: 19px; font-weight: 500; min-height: 26px; }
+  #dots { display: flex; gap: 20px; }
+  #dots span { width: 13px; height: 13px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--text); }
+  #dots span.on { background: var(--text); }
+  #dots.shake { animation: shake .35s; }
+  @keyframes shake { 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
+  .pad { display: grid; grid-template-columns: repeat(3, 76px); gap: 16px 24px; }
+  .pad button { height: 76px; border-radius: 50%; background: var(--card); color: var(--text); font-size: 30px; font-weight: 300; }
+  .pad button:active { background: var(--raised); opacity: .7; }
+  .pad .plain { background: none; font-size: 15px; font-weight: 500; }
+  .pad svg { width: 26px; height: 26px; stroke-width: 1.7; }
 </style>
 </head>
 <body>
 <header>
-  <h1>Kontingent</h1>
+  <h1 id="title">Heute</h1>
   <span id="todayLabel" class="muted small"></span>
 </header>
 
-<div class="card">
-  <div class="eyebrow">Heute verfügbar</div>
-  <div id="left" class="hero-num"></div>
-  <div id="meter" class="meter"><div></div></div>
-  <div id="note" class="muted small" style="margin-top:8px"></div>
-  <div class="stats">
-    <div><div class="eyebrow">Pro Tag</div><div id="perDay" class="stat"></div></div>
-    <div><div class="eyebrow">Tage</div><div id="days" class="stat"></div></div>
-    <div><div class="eyebrow">Bestand</div><div id="total" class="stat"></div></div>
-  </div>
-  <label class="line"><span>Reichen bis</span><input type="date" id="until" onchange="S.until = this.value; save()"></label>
-</div>
-
-<h2>Konsum erfassen</h2>
-<div class="card">
-  <select id="strain" aria-label="Sorte"></select>
-  <div class="chips" id="chips">
-    <button data-g="0,1">0,1 g</button><button data-g="0,2">0,2 g</button>
-    <button data-g="0,3">0,3 g</button><button data-g="0,5">0,5 g</button>
-  </div>
-  <div class="row">
-    <input id="use" inputmode="decimal" placeholder="Menge in g" aria-label="Menge in Gramm">
-    <input type="date" id="date" aria-label="Datum">
-  </div>
-  <button class="primary" onclick="logUse()">Erfassen</button>
-</div>
-
-<h2>Bestand</h2>
-<div class="card" id="stock"></div>
-<div class="card" style="margin-top:10px">
-  <details id="addForm">
-    <summary>Sorte hinzufügen</summary>
-    <p class="hint">Etikett scannen: in das Feld tippen, „Text scannen“ wählen und die Kamera auf das Etikett richten.</p>
-    <textarea id="label" rows="3" placeholder="Etikett-Text" oninput="fillFromLabel()" aria-label="Etikett-Text"></textarea>
-    <input id="name" placeholder="Name" aria-label="Name">
-    <div class="row">
-      <input id="thc" inputmode="decimal" placeholder="THC %" aria-label="THC in Prozent">
-      <input id="cbd" inputmode="decimal" placeholder="CBD %" aria-label="CBD in Prozent">
-      <input id="grams" inputmode="decimal" placeholder="Gramm" aria-label="Menge in Gramm">
+<!-- Heute -->
+<section data-tab="heute">
+  <div class="card">
+    <div class="eyebrow" id="heroLabel">Heute verfügbar</div>
+    <div id="left" class="hero-num"></div>
+    <div id="meter" class="meter"><div></div></div>
+    <div id="note" class="muted small" style="margin-top:8px"></div>
+    <div class="stats">
+      <div><div class="eyebrow">Pro Tag</div><div id="perDay" class="stat"></div></div>
+      <div><div class="eyebrow">Konsumtage</div><div id="days" class="stat"></div></div>
+      <div><div class="eyebrow">Bestand</div><div id="total" class="stat"></div></div>
     </div>
-    <button class="primary" onclick="addStrain()">Hinzufügen</button>
-  </details>
-</div>
-
-<h2>Letzte 7 Tage</h2>
-<div class="card">
-  <div class="chart" id="chart"></div>
-  <div class="chart-foot" id="chartFoot"></div>
-</div>
-
-<h2>Verlauf</h2>
-<div class="card" id="logs"></div>
-
-<h2>Daten</h2>
-<div class="card">
-  <div class="row">
-    <button onclick="exportData()">Backup exportieren</button>
-    <button onclick="$('#imp').click()">Backup importieren</button>
+    <label class="line"><span>Reichen bis</span><input type="date" id="until" onchange="S.until = this.value; save()"></label>
   </div>
-  <input type="file" id="imp" accept="application/json,.json" hidden onchange="importData(this.files[0]); this.value = ''">
+
+  <h2>Konsum erfassen</h2>
+  <div class="card">
+    <select id="strain" aria-label="Sorte"></select>
+    <div class="seg" id="forms" role="radiogroup" aria-label="Konsumform"></div>
+    <div class="chips" id="chips">
+      <button data-g="0,1">0,1 g</button><button data-g="0,2">0,2 g</button>
+      <button data-g="0,3">0,3 g</button><button data-g="0,5">0,5 g</button>
+    </div>
+    <div class="row">
+      <input id="use" inputmode="decimal" placeholder="Menge in g" aria-label="Menge in Gramm">
+      <input type="date" id="date" aria-label="Datum">
+    </div>
+    <button class="primary" onclick="logUse()">Erfassen</button>
+  </div>
+
+  <h2>Heute erfasst</h2>
+  <div class="card" id="todayLogs"></div>
+</section>
+
+<!-- Bestand -->
+<section data-tab="bestand" hidden>
+  <div class="card">
+    <div class="stats bare">
+      <div><div class="eyebrow">Gesamt</div><div id="stockTotal" class="stat"></div></div>
+      <div><div class="eyebrow">Wert</div><div id="stockValue" class="stat"></div></div>
+      <div><div class="eyebrow">Reicht bis</div><div id="runout" class="stat"></div></div>
+    </div>
+  </div>
+  <p class="hint">„Reicht bis“ rechnet mit deinem durchschnittlichen Tagesbedarf.</p>
+
+  <h2>Sorten</h2>
+  <div class="card" id="stock"></div>
+  <div class="card">
+    <details id="addForm">
+      <summary>Sorte hinzufügen</summary>
+      <textarea id="label" rows="3" placeholder="Etikett-Text" oninput="fillFromLabel()" aria-label="Etikett-Text"></textarea>
+      <input id="name" placeholder="Name" aria-label="Name">
+      <div class="row">
+        <input id="thc" inputmode="decimal" placeholder="THC %" aria-label="THC in Prozent">
+        <input id="cbd" inputmode="decimal" placeholder="CBD %" aria-label="CBD in Prozent">
+      </div>
+      <div class="row">
+        <input id="grams" inputmode="decimal" placeholder="Gramm" aria-label="Menge in Gramm">
+        <input id="price" inputmode="decimal" placeholder="Preis gesamt €" aria-label="Preis gesamt in Euro">
+      </div>
+      <button class="primary" onclick="addStrain()">Hinzufügen</button>
+      <p class="hint">Etikett scannen: in das Feld „Etikett-Text“ tippen, „Text scannen“ wählen und die Kamera auf das Etikett richten. Die Werte werden automatisch übernommen.</p>
+    </details>
+  </div>
+</section>
+
+<!-- Statistik -->
+<section data-tab="statistik" hidden>
+  <h2>Tagesbedarf</h2>
+  <div class="card">
+    <div class="stats bare">
+      <div><div class="eyebrow">Menge</div><div id="avgGrams" class="stat"></div></div>
+      <div><div class="eyebrow">Kosten</div><div id="avgCost" class="stat"></div></div>
+      <div><div class="eyebrow">Pro Monat</div><div id="avgMonth" class="stat"></div></div>
+    </div>
+    <p class="hint" id="avgNote"></p>
+  </div>
+
+  <h2>Letzte 7 Tage</h2>
+  <div class="card">
+    <div class="chart" id="chart"></div>
+    <div class="foot" id="chartFoot"></div>
+  </div>
+
+  <h2>Monat</h2>
+  <div class="card">
+    <div class="month-head">
+      <button onclick="shiftMonth(-1)" aria-label="Vorheriger Monat"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <span id="monthLabel"></span>
+      <button id="nextMonth" onclick="shiftMonth(1)" aria-label="Nächster Monat"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <div class="cal" id="cal"></div>
+    <div class="stats">
+      <div><div class="eyebrow">Menge</div><div id="mGrams" class="stat"></div></div>
+      <div><div class="eyebrow">Kosten</div><div id="mCost" class="stat"></div></div>
+      <div><div class="eyebrow">Konsumfrei</div><div id="mFree" class="stat"></div></div>
+    </div>
+    <p class="hint" id="mCompare"></p>
+  </div>
+
+  <h2>Verlauf</h2>
+  <div class="card" id="logs"></div>
+</section>
+
+<!-- Einstellungen -->
+<section data-tab="einstellungen" hidden>
+  <h2>Pausentage</h2>
+  <div class="card">
+    <div class="days" id="breaks"></div>
+    <p class="hint">An Pausentagen ist dein Budget 0 g. Die Menge verteilt sich auf die übrigen Tage.</p>
+  </div>
+
+  <h2>Sichtschutz</h2>
+  <div class="card">
+    <div class="line first"><span>PIN-Sperre</span><button id="pinBtn" onclick="togglePin()"></button></div>
+    <p class="hint">Fragt beim Öffnen nach einer PIN. Schützt vor neugierigen Blicken, verschlüsselt die Daten aber nicht.</p>
+  </div>
+
+  <h2>Daten</h2>
+  <div class="card">
+    <div class="line first"><span>Backup</span>
+      <span class="row" style="flex:none;gap:20px"><button onclick="exportData()">Exportieren</button><button onclick="$('#imp').click()">Importieren</button></span>
+    </div>
+    <input type="file" id="imp" accept="application/json,.json" hidden onchange="importData(this.files[0]); this.value = ''">
+    <p class="hint">Alle Daten liegen nur auf diesem Gerät. Ein Backup kannst du in iCloud Drive sichern.</p>
+  </div>
+</section>
+
+<nav id="nav">
+  <button data-go="heute" class="on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>Heute</button>
+  <button data-go="bestand"><svg viewBox="0 0 24 24"><path d="M4 8l8-4.5L20 8v8l-8 4.5L4 16z"/><path d="M4 8l8 4.5L20 8M12 12.5v8"/></svg>Bestand</button>
+  <button data-go="statistik"><svg viewBox="0 0 24 24"><path d="M5 20V12M12 20V5M19 20v-6"/></svg>Statistik</button>
+  <button data-go="einstellungen"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>Einstellungen</button>
+</nav>
+
+<dialog id="dlg">
+  <form method="dialog">
+    <div class="dlg-title" id="dlgTitle"></div>
+    <input id="dlgGrams" inputmode="decimal" placeholder="Gramm" aria-label="Gramm">
+    <input id="dlgPrice" inputmode="decimal" placeholder="Preis gesamt € (optional)" aria-label="Preis gesamt in Euro">
+    <div class="row"><button value="cancel" class="secondary">Abbrechen</button><button value="ok" class="primary">Hinzufügen</button></div>
+  </form>
+</dialog>
+
+<div id="lock" hidden>
+  <div id="lockTitle"></div>
+  <div id="dots"></div>
+  <div class="pad" id="pad">
+    <button>1</button><button>2</button><button>3</button><button>4</button><button>5</button>
+    <button>6</button><button>7</button><button>8</button><button>9</button>
+    <button class="plain" id="lockAlt"></button><button>0</button>
+    <button class="plain" data-k="del" aria-label="Löschen"><svg viewBox="0 0 24 24"><path d="M9 6h11v12H9l-6-6z M12.5 9.5l5 5M17.5 9.5l-5 5"/></svg></button>
+  </div>
 </div>
 
 <script src="logic.js"></script>
 <script>
 const KEY = 'kontingent';
 const $ = q => document.querySelector(q);
-let S = JSON.parse(localStorage.getItem(KEY) || 'null') || { strains: [], logs: [], until: '' };
+const $$ = q => document.querySelectorAll(q);
+let S = JSON.parse(localStorage.getItem(KEY) || 'null') || {};
+S = { strains: [], logs: [], until: '', breaks: [], pin: '', form: 'Joint', ...S };
 
+const TITLES = { heute: 'Heute', bestand: 'Bestand', statistik: 'Statistik', einstellungen: 'Einstellungen' };
+const WEEK = [[1, 'Mo'], [2, 'Di'], [3, 'Mi'], [4, 'Do'], [5, 'Fr'], [6, 'Sa'], [0, 'So']];
 const iso = d => d.toLocaleDateString('sv'); // YYYY-MM-DD, local time
 const today = () => iso(new Date());
 const eom = () => { const d = new Date(); return iso(new Date(d.getFullYear(), d.getMonth() + 1, 0)); };
 const n = x => (Math.round(x * 100) / 100).toLocaleString('de-DE');
 const g = x => n(x) + ' g';
+const eur = x => x.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
 const r3 = x => Math.round(x * 1000) / 1000; // avoid float drift in stock
 const esc = s => String(s).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 const day = (d, o) => new Date(d + 'T12:00').toLocaleDateString('de-DE', o);
-const sum = a => a.reduce((t, l) => t + l.grams, 0);
 const X = '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+let month = today().slice(0, 7), shownDay = today();
 
 function save() { localStorage.setItem(KEY, JSON.stringify(S)); render(); }
+
+function show(tab) {
+  $$('[data-tab]').forEach(s => s.hidden = s.dataset.tab !== tab);
+  $$('nav button').forEach(b => b.classList.toggle('on', b.dataset.go === tab));
+  $('#title').textContent = TITLES[tab];
+  $('#todayLabel').hidden = tab !== 'heute';
+  scrollTo(0, 0);
+}
+$('#nav').onclick = e => { const b = e.target.closest('button'); if (b) show(b.dataset.go); };
+
+const logRow = (l, when) => `<div class="item"><div class="date">${when}</div>
+  <div class="grow"><div class="name">${esc(l.name)}</div>
+    <div class="muted small">${l.form || 'Joint'} · ca. ${Math.round(absorbedMg(l))} mg THC${l.price ? ' · ' + eur(l.grams * l.price) : ''}</div></div>
+  <div class="amount">${g(l.grams)}</div>
+  <button class="icon" aria-label="Eintrag löschen" onclick="delLog(${l.id})">${X}</button></div>`;
 
 function render() {
   const t = today(), until = S.until || eom();
   const stock = S.strains.reduce((a, s) => a + s.grams, 0);
-  const todayG = sum(S.logs.filter(l => l.date === t));
-  const b = budget(stock, todayG, t, until);
+  const todays = S.logs.filter(l => l.date === t);
+  const todayG = sum(todays);
+  const b = budget(stock, todayG, t, until, S.breaks);
+  const avg = dailyAvg(S.logs, t);
+  const last = daysSinceLast(S.logs, t);
 
+  // Heute
   $('#todayLabel').textContent = day(t, { weekday: 'long', day: 'numeric', month: 'long' });
   $('#until').value = until;
   $('#total').textContent = g(stock);
   const over = b && b.leftToday < -1e-9;
+  $('#heroLabel').textContent = b?.isBreak ? 'Pausentag' : 'Heute verfügbar';
   $('#left').textContent = b ? g(Math.max(b.leftToday, 0)) : '–';
   $('#left').classList.toggle('over', !!over);
   $('#meter').classList.toggle('over', !!over);
-  $('#meter').firstChild.style.width = (b && b.perDay > 0 ? Math.min(todayG / b.perDay, 1) * 100 : 0) + '%';
+  $('#meter').firstChild.style.width = (!b ? 0 : b.isBreak ? (todayG ? 100 : 0) : b.perDay > 0 ? Math.min(todayG / b.perDay, 1) * 100 : 0) + '%';
   $('#note').innerHTML = !b ? '<span class="over">Das Zieldatum liegt in der Vergangenheit.</span>'
+    : over && b.isBreak ? `<span class="over">Am Pausentag ${g(todayG)} erfasst</span>`
     : over ? `<span class="over">Tagesbudget um ${g(-b.leftToday)} überschritten</span>`
-    : `Heute erfasst: ${g(todayG)}`;
+    : b.isBreak ? 'Heute ist ein geplanter Pausentag.'
+    : todayG ? `Heute erfasst: ${g(todayG)}`
+    : last ? `Letzter Konsum vor ${last} ${last === 1 ? 'Tag' : 'Tagen'}`
+    : 'Heute noch nichts erfasst';
   $('#perDay').textContent = b ? g(b.perDay) : '–';
   $('#days').textContent = b ? b.days : '–';
 
   $('#strain').innerHTML = S.strains.map(s => `<option value="${s.id}">${esc(s.name)} — ${g(s.grams)}</option>`).join('')
     || '<option value="">Noch keine Sorte im Bestand</option>';
+  $('#forms').innerHTML = Object.keys(FORMS).map(f =>
+    `<button role="radio" aria-checked="${f === S.form}" class="${f === S.form ? 'on' : ''}" data-f="${f}">${f}</button>`).join('');
+  $('#todayLogs').innerHTML = [...todays].reverse()
+    .map(l => logRow(l, new Date(l.id).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }))).join('')
+    || '<p class="empty">Noch keine Einträge heute.</p>';
 
+  // Bestand
+  $('#stockTotal').textContent = g(stock);
+  $('#stockValue').textContent = eur(S.strains.reduce((a, s) => a + s.grams * (s.price || 0), 0));
+  $('#runout').textContent = avg && avg.grams > 0 && stock > 0
+    ? day(addDays(t, Math.floor(stock / avg.grams)), { day: 'numeric', month: 'short' }) : '–';
   $('#stock').innerHTML = S.strains.map(s => `<div class="item"><div class="grow">
       <div class="name">${esc(s.name)}</div>
-      <div class="muted small">THC ${n(s.thc)} % · CBD ${n(s.cbd)} %</div>
+      <div class="muted small">THC ${n(s.thc)} % · CBD ${n(s.cbd)} %${s.price ? ' · ' + eur(s.price) + '/g' : ''}</div>
       <div class="actions"><button onclick="restock(${s.id})">Nachfüllen</button>
         <button class="danger" onclick="delStrain(${s.id})">Entfernen</button></div>
     </div><div class="amount">${g(s.grams)}</div></div>`).join('')
     || '<p class="empty">Noch keine Sorte erfasst.</p>';
 
-  const days = [...Array(7)].map((_, i) => { const d = new Date(); d.setDate(d.getDate() - 6 + i); return iso(d); });
-  const totals = days.map(d => sum(S.logs.filter(l => l.date === d)));
-  const max = Math.max(...totals, 0.001), week = totals.reduce((a, x) => a + x, 0);
-  $('#chart').innerHTML = days.map((d, i) => `<div class="col" title="${g(totals[i])}">
-      <div class="bar ${d === t ? 'today' : ''}" style="height:${totals[i] / max * 100}%"></div>
-      <span>${day(d, { weekday: 'short' }).slice(0, 2)}</span></div>`).join('');
-  $('#chartFoot').innerHTML = `<span>Summe ${g(week)}</span><span>Ø ${g(week / 7)} pro Tag</span>`;
+  // Statistik: Tagesbedarf
+  $('#avgGrams').textContent = avg ? g(avg.grams) : '–';
+  $('#avgCost').textContent = avg ? eur(avg.cost) : '–';
+  $('#avgMonth').textContent = avg ? eur(avg.cost * 30) : '–';
+  const diff = avg && b && b.perDay > 0 ? Math.round((avg.grams / b.perDay - 1) * 100) : null;
+  $('#avgNote').textContent = !avg ? 'Erscheint nach dem ersten Eintrag.'
+    : `Durchschnitt pro Tag über die letzten ${avg.days} ${avg.days === 1 ? 'Tag' : 'Tage'}.`
+      + (diff === null ? '' : diff > 0 ? ` Du liegst ${diff} % über deinem Budget.` : ` Du liegst ${-diff} % unter deinem Budget.`);
 
+  // Statistik: 7 Tage
+  const week = [...Array(7)].map((_, i) => addDays(t, i - 6));
+  const totals = week.map(d => sum(S.logs.filter(l => l.date === d)));
+  const max7 = Math.max(...totals, 0.001), sum7 = totals.reduce((a, x) => a + x, 0);
+  $('#chart').innerHTML = week.map((d, i) => `<div class="col" title="${g(totals[i])}">
+      <div class="bar ${d === t ? 'today' : ''}" style="height:${totals[i] / max7 * 100}%"></div>
+      <span>${day(d, { weekday: 'short' }).slice(0, 2)}</span></div>`).join('');
+  $('#chartFoot').innerHTML = `<span>Summe ${g(sum7)}</span><span>Ø ${g(sum7 / 7)} pro Tag</span>`;
+
+  renderMonth(t);
   $('#logs').innerHTML = [...S.logs].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id).slice(0, 50)
-    .map(l => `<div class="item"><div class="date">${day(l.date, { day: '2-digit', month: '2-digit' })}</div>
-      <div class="grow"><div class="name">${esc(l.name)}</div>
-        <div class="muted small">ca. ${Math.round(l.grams * l.thc * 10)} mg THC</div></div>
-      <div class="amount">${g(l.grams)}</div>
-      <button class="icon" aria-label="Eintrag löschen" onclick="delLog(${l.id})">${X}</button></div>`).join('')
+    .map(l => logRow(l, day(l.date, { day: '2-digit', month: '2-digit' }))).join('')
     || '<p class="empty">Noch keine Einträge.</p>';
+
+  // Einstellungen
+  $('#breaks').innerHTML = WEEK.map(([i, label]) =>
+    `<button class="${S.breaks.includes(i) ? 'on' : ''}" aria-pressed="${S.breaks.includes(i)}" data-d="${i}">${label}</button>`).join('');
+  $('#pinBtn').textContent = S.pin ? 'Entfernen' : 'Einrichten';
+  $('#pinBtn').classList.toggle('danger', !!S.pin);
 }
 
+function renderMonth(t) {
+  const [y, m] = month.split('-').map(Number);
+  const len = new Date(y, m, 0).getDate(), offset = (new Date(y, m - 1, 1).getDay() + 6) % 7; // Monday first
+  const inMonth = S.logs.filter(l => l.date.startsWith(month));
+  const byDay = {};
+  inMonth.forEach(l => byDay[l.date] = (byDay[l.date] || 0) + l.grams);
+  const max = Math.max(...Object.values(byDay), 0.001);
+  const firstLog = S.logs.reduce((a, l) => (l.date < a ? l.date : a), t);
+  let cells = WEEK.map(([, d]) => `<div class="cal-h">${d}</div>`).join('') + '<div></div>'.repeat(offset), free = 0;
+  for (let i = 1; i <= len; i++) {
+    const d = `${month}-${String(i).padStart(2, '0')}`, v = byDay[d] || 0, p = v ? Math.round(25 + 75 * v / max) : 0;
+    if (!v && d <= t && d >= firstLog && S.logs.length) free++;
+    cells += `<div class="cal-d${d === t ? ' today' : ''}${d > t ? ' future' : ''}${p > 55 ? ' strong' : ''}" title="${g(v)}"
+      ${p ? `style="background:color-mix(in srgb, var(--accent) ${p}%, var(--track))"` : ''}>${i}</div>`;
+  }
+  $('#cal').innerHTML = cells;
+  $('#monthLabel').textContent = new Date(y, m - 1, 1).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+  $('#nextMonth').disabled = month >= t.slice(0, 7);
+  // running month: compare with the same days of the previous month, not the whole month
+  const prevMonth = iso(new Date(y, m - 2, 1)).slice(0, 7), cutDay = month === t.slice(0, 7) ? t.slice(8) : '31';
+  const grams = sum(inMonth), prev = sum(S.logs.filter(l => l.date.startsWith(prevMonth) && l.date.slice(8) <= cutDay));
+  $('#mGrams').textContent = g(grams);
+  $('#mCost').textContent = eur(cost(inMonth));
+  $('#mFree').textContent = `${free} ${free === 1 ? 'Tag' : 'Tage'}`;
+  $('#mCompare').textContent = prev ? `${cutDay === '31' ? 'Vormonat' : `Vormonat bis zum ${+cutDay}.`}: ${g(prev)}, `
+    + `${grams >= prev ? '+' : '−'}${Math.abs(Math.round((grams / prev - 1) * 100))} %` : '';
+}
+
+function shiftMonth(k) { const [y, m] = month.split('-').map(Number); month = iso(new Date(y, m - 1 + k, 1)).slice(0, 7); render(); }
+
 $('#chips').onclick = e => { if (e.target.dataset.g) $('#use').value = e.target.dataset.g; };
+$('#forms').onclick = e => { if (e.target.dataset.f) { S.form = e.target.dataset.f; save(); } };
+$('#breaks').onclick = e => {
+  const d = e.target.dataset.d;
+  if (d == null) return;
+  S.breaks = S.breaks.includes(+d) ? S.breaks.filter(x => x !== +d) : [...S.breaks, +d];
+  save();
+};
 
 function fillFromLabel() {
   const p = parseLabel($('#label').value);
@@ -229,18 +462,32 @@ function fillFromLabel() {
 }
 
 function addStrain() {
-  const name = $('#name').value.trim(), grams = num($('#grams').value);
+  const name = $('#name').value.trim(), grams = num($('#grams').value), total = num($('#price').value);
   if (!name || !(grams > 0)) return alert('Bitte Name und Menge in Gramm angeben.');
-  S.strains.push({ id: Date.now(), name, thc: num($('#thc').value) || 0, cbd: num($('#cbd').value) || 0, grams });
-  for (const k of ['label', 'name', 'thc', 'cbd', 'grams']) $('#' + k).value = '';
+  S.strains.push({ id: Date.now(), name, thc: num($('#thc').value) || 0, cbd: num($('#cbd').value) || 0, grams,
+                   price: total > 0 ? total / grams : 0 });
+  for (const k of ['label', 'name', 'thc', 'cbd', 'grams', 'price']) $('#' + k).value = '';
   $('#addForm').open = false;
   save();
 }
 
+let restockId = null;
 function restock(id) {
-  const s = S.strains.find(s => s.id === id), x = num(prompt(`Wie viel Gramm ${s.name} kommen hinzu?`));
-  if (x > 0) { s.grams = r3(s.grams + x); save(); }
+  restockId = id;
+  $('#dlgTitle').textContent = S.strains.find(s => s.id === id).name + ' nachfüllen';
+  $('#dlgGrams').value = $('#dlgPrice').value = '';
+  $('#dlg').returnValue = '';
+  $('#dlg').showModal();
 }
+$('#dlg').onclose = () => {
+  const s = S.strains.find(s => s.id === restockId), x = num($('#dlgGrams').value), p = num($('#dlgPrice').value);
+  if ($('#dlg').returnValue !== 'ok' || !s) return;
+  if (!(x > 0)) return alert('Bitte eine Menge in Gramm angeben.');
+  // weighted average price of old and new stock
+  s.price = (s.grams * (s.price || 0) + (p > 0 ? p : x * (s.price || 0))) / (s.grams + x);
+  s.grams = r3(s.grams + x);
+  save();
+};
 
 function delStrain(id) {
   const s = S.strains.find(s => s.id === id);
@@ -253,7 +500,8 @@ function logUse() {
   if (!(x > 0)) return alert('Bitte eine Menge in Gramm angeben.');
   if (x > s.grams + 1e-9) return alert(`Im Bestand sind nur noch ${g(s.grams)} ${s.name}.`);
   s.grams = r3(s.grams - x);
-  S.logs.push({ id: Date.now(), strainId: s.id, name: s.name, thc: s.thc, grams: x, date: $('#date').value || today() });
+  S.logs.push({ id: Date.now(), strainId: s.id, name: s.name, thc: s.thc, price: s.price || 0,
+                form: S.form, grams: x, date: $('#date').value || today() });
   $('#use').value = '';
   save();
 }
@@ -277,12 +525,68 @@ function importData(f) {
   f.text().then(t => {
     const d = JSON.parse(t);
     if (!Array.isArray(d.strains) || !Array.isArray(d.logs)) throw 0;
-    if (confirm('Aktuelle Daten durch das Backup ersetzen?')) { S = d; save(); }
+    if (confirm('Aktuelle Daten durch das Backup ersetzen?')) { S = { ...S, ...d }; save(); }
   }).catch(() => alert('Die Datei ist kein gültiges Backup.'));
 }
 
+// PIN lock. Only a hash is stored, so a reused PIN never sits in plain text.
+const hash = async p => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(KEY + ':' + p)))]
+  .map(b => b.toString(16).padStart(2, '0')).join('');
+let pinMode = null, pinBuf = '', pinFirst = '';
+
+function openLock(mode, title) {
+  pinMode = mode; pinBuf = '';
+  $('#lock').hidden = false;
+  $('#lockTitle').textContent = title || { unlock: 'PIN eingeben', set: 'Neue PIN wählen', confirm: 'PIN bestätigen' }[mode];
+  $('#lockAlt').textContent = mode === 'unlock' ? 'Vergessen' : 'Abbrechen';
+  dots();
+}
+function closeLock() { pinMode = null; $('#lock').hidden = true; }
+function dots() { $('#dots').innerHTML = [0, 1, 2, 3].map(i => `<span class="${i < pinBuf.length ? 'on' : ''}"></span>`).join(''); }
+
+$('#pad').onclick = async e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.id === 'lockAlt') {
+    if (pinMode !== 'unlock') return closeLock();
+    if (confirm('Ohne PIN kommst du nicht an deine Daten. Alle Daten löschen und neu beginnen?')) { localStorage.removeItem(KEY); location.reload(); }
+    return;
+  }
+  if (b.dataset.k === 'del') pinBuf = pinBuf.slice(0, -1);
+  else if (pinBuf.length < 4) pinBuf += b.textContent;
+  dots();
+  if (pinBuf.length < 4) return;
+  const h = await hash(pinBuf);
+  if (pinMode === 'unlock') h === S.pin ? closeLock() : fail('Falsche PIN');
+  else if (pinMode === 'set') { pinFirst = h; openLock('confirm'); }
+  else if (h === pinFirst) { S.pin = h; save(); closeLock(); }
+  else { openLock('set', 'PINs stimmen nicht überein'); fail(); }
+};
+function fail(msg) {
+  if (msg) $('#lockTitle').textContent = msg;
+  $('#dots').classList.add('shake');
+  setTimeout(() => { $('#dots').classList.remove('shake'); pinBuf = ''; dots(); }, 400);
+}
+function togglePin() {
+  if (!S.pin) return openLock('set');
+  if (confirm('PIN-Sperre entfernen?')) { S.pin = ''; save(); }
+}
+
+// Lock when the app goes to the background, so the app switcher shows nothing; refresh "today" on return.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (S.pin && pinMode !== 'set' && pinMode !== 'confirm') { $$('dialog[open]').forEach(d => d.close()); openLock('unlock'); }
+  } else if (shownDay !== today()) {
+    $('#date').value = shownDay = today();
+    month = today().slice(0, 7);
+    render();
+  }
+});
+
 $('#date').value = today();
 render();
+if (S.pin) openLock('unlock');
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
 </html>
