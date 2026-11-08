@@ -45,6 +45,11 @@
   .streak-num { font-size: 40px; font-weight: 600; letter-spacing: -.03em; line-height: 1.1; margin: 4px 0 6px; }
   .streak-num span { font-size: 19px; font-weight: 500; letter-spacing: 0; color: var(--muted); margin-left: 2px; }
   .accent { color: var(--accent); }
+  #streakBlock.top h2 { margin-top: 4px; }
+  .ms-hit { text-align: center; color: var(--accent); font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+  .ms-list summary { font-size: 14px; color: var(--muted); padding: 12px 0; min-height: 20px; cursor: pointer; list-style-position: inside; }
+  .ms-list div { display: flex; justify-content: space-between; font-size: 14px; padding: 6px 0; border-top: 1px solid var(--line); }
+  .ms-list span:last-child { color: var(--muted); }
   .ring { position: relative; width: 184px; margin: 8px auto 0; }
   .ring svg { display: block; width: 100%; height: auto; transform: rotate(-90deg); }
   .ring circle { fill: none; stroke-width: 9; }
@@ -95,7 +100,7 @@
   .chips button { flex: 1; padding: 12px 0; border-radius: 10px; background: var(--bg); color: var(--text); font-size: 15px; }
   .seg { display: flex; padding: 3px; margin-bottom: 10px; border-radius: 10px; background: var(--bg); }
   .seg button { flex: 1; padding: 12px 0; border-radius: 8px; color: var(--text); font-size: 15px; }
-  .seg[hidden], .line[hidden] { display: none; }
+  .seg[hidden], .line[hidden], .addrow[hidden] { display: none; }
   .seg button.on { background: var(--raised); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
 
   .item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
@@ -249,6 +254,8 @@
       <button class="primary" id="logEmptyBtn"></button>
     </div>
   </div>
+
+  <button class="card addrow" id="stockLink" hidden onclick="S.strains.length ? show('bestand') : addStrain()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span></span></button>
 
   <div class="card" id="backupCard" hidden>
     <div class="small" id="backupText"></div>
@@ -507,7 +514,14 @@ function render() {
   // Heute
   const avail = S.strains.filter(s => s.grams > 0), fresh = !S.strains.length && !S.logs.length;
   $('#todayLabel').textContent = day(t, { weekday: 'long', day: 'numeric', month: 'long' });
-  $('#hero').hidden = fresh;
+  // on a break without stock the counter is what matters: it moves to the top, the stock setup shrinks to a link
+  const clean = on('streak') && last > 0 && !avail.length;
+  $('#hero').hidden = fresh || clean;
+  if (clean) $('section[data-tab=heute]').prepend($('#streakBlock')); else $('#todayBlock').after($('#streakBlock'));
+  $('#streakBlock').classList.toggle('top', clean);
+  $('#logCard').hidden = clean;
+  $('#stockLink').hidden = !clean;
+  $('#stockLink span').textContent = S.strains.length ? 'Bestand auffüllen' : 'Bestand anlegen';
   $('#until').value = until;
   $('#untilLabel').textContent = day(until, { day: 'numeric', month: 'short' });
   $('#total').textContent = g(stock);
@@ -646,8 +660,11 @@ function renderStreak(t, last) {
     ? '<button class="danger" onclick="endPause()">Pausenziel beenden</button>'
     : `<button onclick="setPause()">${P ? 'Neues Pausenziel' : 'Pausenziel setzen'}</button>`}${manual ? '<button onclick="setCleanSince()">Anpassen</button>' : ''}</div>` : '';
   if (last === null && !P) { $('#streak').innerHTML = '<p class="empty">Der Zähler startet mit deinem ersten Eintrag. Schon länger konsumfrei? Trag ein, seit wann.</p><div class="actions"><button onclick="setCleanSince()">Konsumfreie Tage eintragen</button></div>'; return; }
-  const lastDate = last ? addDays(t, -last) : null, before = lastDate && dailyAvg(S.logs, lastDate); // spending before the break
+  // what consumption looked like before the break: real entries, else the weekly estimate from the dialog
+  const lastDate = last ? addDays(t, -last) : null, W = S.weekly;
+  const before = lastDate && (dailyAvg(S.logs, lastDate) || (W && (W.eur || W.g) && { cost: (W.eur || 0) / 7, grams: (W.g || 0) / 7 }));
   const saved = on('costs') && before && before.cost * last >= 0.5 ? before.cost * last : 0;
+  const notUsed = before && before.grams * last >= 0.1 ? before.grams * last : 0;
   const longDay = d => day(d, { weekday: 'long', day: 'numeric', month: 'long' });
   const record = last >= best && last > 0;
   const stats = cells => `<div class="stats" style="grid-template-columns:repeat(${cells.length},1fr)">${cells.map(([l, v, cls = '']) => `<div><div class="eyebrow">${l}</div><div class="stat ${cls}">${v}</div></div>`).join('')}</div>`;
@@ -667,10 +684,20 @@ function renderStreak(t, last) {
       <div class="muted small">Heute konsumiert. Der Zähler startet morgen neu.</div>
       <div class="foot"><span>Rekord</span><span>${tage(best)}</span></div>${btn}`;
   } else {
-    const [goal, label] = nextMilestone(last), prev = MILESTONES.filter(([d]) => d <= last).pop()?.[0] || 0;
-    $('#streak').innerHTML = ring(goalsOn ? (last - prev) / (goal - prev) : 1, last, `${last === 1 ? 'Tag' : 'Tage'} konsumfrei`)
-      + `<div class="ring-cap">${P ? '<span class="accent">Pausenziel erreicht</span> · ' : ''}seit ${longDay(addDays(lastDate, 1))}${last >= 7 ? `<br>Das sind ${span(last)}.` : ''}</div>`
-      + stats([...(goalsOn ? [['Ziel', label]] : []), recordCell, ...savedCell]) + btn;
+    const [goal, label] = nextMilestone(last), reached = MILESTONES.filter(([d]) => d <= last), prev = reached.at(-1)?.[0] || 0;
+    // the newest milestone is highlighted for the rest of the day it is first seen
+    const hit = reached.at(-1), M = S.ms;
+    if (hit && !(M && M.start === lastDate && M.d >= hit[0])) {
+      S.ms = { start: lastDate, d: hit[0], date: t };
+      localStorage.setItem(KEY, JSON.stringify(S));
+    }
+    const fresh = hit && S.ms.start === lastDate && S.ms.d === hit[0] && S.ms.date === t;
+    $('#streak').innerHTML = (fresh ? `<div class="ms-hit">${hit[1]} geschafft</div>` : '') + ring(goalsOn ? (last - prev) / (goal - prev) : 1, last, `${last === 1 ? 'Tag' : 'Tage'} konsumfrei`)
+      + `<div class="ring-cap">${P ? '<span class="accent">Pausenziel erreicht</span> · ' : ''}seit ${longDay(addDays(lastDate, 1))}${last >= 7 ? `<br>Das sind ${span(last)}.` : ''}${notUsed ? `<br>Ca. ${g(notUsed)} nicht konsumiert.` : ''}</div>`
+      + stats([...(goalsOn ? [['Ziel', label]] : []), recordCell, ...savedCell])
+      + (reached.length ? `<details class="ms-list"><summary>Erreichte Meilensteine (${reached.length})</summary>
+        ${[...reached].reverse().map(([d, l]) => `<div><span>${l}</span><span>${day(addDays(lastDate, d), { day: 'numeric', month: 'long' })}</span></div>`).join('')}</details>` : '')
+      + btn;
   }
 }
 
@@ -690,15 +717,18 @@ function setCleanSince() {
   openEdit('Konsumfrei seit', `<div class="row"><label class="field"><span>Letzter Konsum am</span><input type="date" id="eCleanDate" max="${addDays(t, -1)}" value="${S.cleanSince || ''}"></label>
     <label class="field"><span>Tage ohne Konsum</span><input id="eClean" inputmode="numeric" placeholder="z. B. 14" value="${cur}"></label></div>
     <p class="hint" style="margin:0 2px 14px">Datum oder Tage eintragen, das andere füllt sich selbst. Für die Zeit, bevor du die App genutzt hast. Dein nächster Eintrag setzt den Zähler wie gewohnt zurück.</p>
+    <div class="row">${on('costs') ? `<label class="field"><span>Ausgaben pro Woche</span><div class="unit"><input id="eWeekEur" inputmode="decimal" placeholder="optional" value="${S.weekly?.eur ? n(S.weekly.eur) : ''}"><span>€</span></div></label>` : ''}
+      <label class="field"><span>Menge pro Woche</span><div class="unit"><input id="eWeekG" inputmode="decimal" placeholder="optional" value="${S.weekly?.g ? n(S.weekly.g) : ''}"><span>g</span></div></label></div>
+    <p class="hint" style="margin:8px 2px 14px">Optional: wie viel du vor der Pause gebraucht hast. Damit zeigt die App, was du sparst.</p>
     <label class="line first" style="margin-bottom:14px"><span>Ziel anzeigen<span class="sub">Nächstes Ziel und Pausenziel</span></span><input type="checkbox" class="switch" id="eGoal"${on('pause') ? ' checked' : ''}></label>`, () => {
     const d = parseInt($('#eClean').value, 10), goal = $('#eGoal').checked;
+    const eurIn = $('#eWeekEur'), weekly = { eur: eurIn ? num(eurIn.value) || 0 : S.weekly?.eur || 0, g: num($('#eWeekG').value) || 0 };
     if (!(d > 0)) return alert('Bitte ein Datum vor heute oder eine Anzahl Tage eingeben.'), false;
-    withUndo(`Konsumfrei: ${tage(d)}`, () => { S.cleanSince = addDays(t, -d); S.opt = S.opt.filter(x => x !== 'pause').concat(goal ? ['pause'] : []); });
+    withUndo(`Konsumfrei: ${tage(d)}`, () => { S.cleanSince = addDays(t, -d); S.opt = S.opt.filter(x => x !== 'pause').concat(goal ? ['pause'] : []); S.weekly = weekly; });
   }, S.cleanSince && (() => withUndo('Startdatum entfernt', () => delete S.cleanSince)), 'Speichern', true);
   $('#editBody').oninput = e => { // keep date and day count in sync
-    if (e.target.id === 'eGoal') return;
     if (e.target.id === 'eCleanDate') $('#eClean').value = e.target.value ? daysBetween(e.target.value, t) : '';
-    else { const d = parseInt(e.target.value, 10); $('#eCleanDate').value = d > 0 ? addDays(t, -d) : ''; }
+    else if (e.target.id === 'eClean') { const d = parseInt(e.target.value, 10); $('#eCleanDate').value = d > 0 ? addDays(t, -d) : ''; }
   };
 }
 function endPause() { withUndo('Pausenziel beendet', () => S.pause = null); }
