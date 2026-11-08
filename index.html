@@ -636,6 +636,8 @@ function render() {
   $('#pinBtn').classList.toggle('danger', !!S.pin);
 }
 
+// Average price per gram over the strains that have one (0 = unknown).
+const pricePerG = () => { const p = S.strains.map(s => s.price).filter(x => x > 0); return p.length ? p.reduce((a, b) => a + b) / p.length : 0; };
 // Consumption days for the streak: the logs plus the last day before the app, if set (S.cleanSince).
 const marks = () => S.cleanSince ? [...S.logs, { date: S.cleanSince, grams: 0 }] : S.logs;
 
@@ -662,7 +664,7 @@ function renderStreak(t, last) {
   if (last === null && !P) { $('#streak').innerHTML = '<p class="empty">Der Zähler startet mit deinem ersten Eintrag. Schon länger konsumfrei? Trag ein, seit wann.</p><div class="actions"><button onclick="setCleanSince()">Konsumfreie Tage eintragen</button></div>'; return; }
   // what consumption looked like before the break: real entries, else the weekly estimate from the dialog
   const lastDate = last ? addDays(t, -last) : null, W = S.weekly;
-  const before = lastDate && (dailyAvg(S.logs, lastDate) || (W && (W.eur || W.g) && { cost: (W.eur || 0) / 7, grams: (W.g || 0) / 7 }));
+  const before = lastDate && (dailyAvg(S.logs, lastDate) || (W && (W.eur || W.g) && { cost: (W.eur || (W.g || 0) * pricePerG()) / 7, grams: (W.g || 0) / 7 }));
   const saved = on('costs') && before && before.cost * last >= 0.5 ? before.cost * last : 0;
   const notUsed = before && before.grams * last >= 0.1 ? before.grams * last : 0;
   const longDay = d => day(d, { weekday: 'long', day: 'numeric', month: 'long' });
@@ -714,21 +716,27 @@ function setPause() {
 }
 function setCleanSince() {
   const t = today(), cur = S.cleanSince ? daysBetween(S.cleanSince, t) : '';
+  // with entries the savings come from their average; the weekly estimate is for a break that started before the app
+  const avg = dailyAvg(S.logs, S.cleanSince || t), ppg = pricePerG();
+  const eurHint = gw => ppg && num(gw) > 0 ? `≈ ${n(num(gw) * ppg)}` : ppg ? 'automatisch' : 'optional';
   openEdit('Konsumfrei seit', `<div class="row"><label class="field"><span>Letzter Konsum am</span><input type="date" id="eCleanDate" max="${addDays(t, -1)}" value="${S.cleanSince || ''}"></label>
     <label class="field"><span>Tage ohne Konsum</span><input id="eClean" inputmode="numeric" placeholder="z. B. 14" value="${cur}"></label></div>
     <p class="hint" style="margin:0 2px 14px">Datum oder Tage eintragen, das andere füllt sich selbst. Für die Zeit, bevor du die App genutzt hast. Dein nächster Eintrag setzt den Zähler wie gewohnt zurück.</p>
-    <div class="row">${on('costs') ? `<label class="field"><span>Ausgaben pro Woche</span><div class="unit"><input id="eWeekEur" inputmode="decimal" placeholder="optional" value="${S.weekly?.eur ? n(S.weekly.eur) : ''}"><span>€</span></div></label>` : ''}
-      <label class="field"><span>Menge pro Woche</span><div class="unit"><input id="eWeekG" inputmode="decimal" placeholder="optional" value="${S.weekly?.g ? n(S.weekly.g) : ''}"><span>g</span></div></label></div>
-    <p class="hint" style="margin:8px 2px 14px">Optional: wie viel du vor der Pause gebraucht hast. Damit zeigt die App, was du sparst.</p>
+    ${avg ? `<p class="hint" style="margin:0 2px 14px">Was du sparst, rechnet die App aus deinem Durchschnitt vor der Pause: ca. ${g(avg.grams * 7)}${on('costs') && avg.cost ? ` und ${eur(avg.cost * 7)}` : ''} pro Woche.</p>`
+    : `<div class="row"><label class="field"><span>Menge pro Woche</span><div class="unit"><input id="eWeekG" inputmode="decimal" placeholder="optional" value="${S.weekly?.g ? n(S.weekly.g) : ''}"><span>g</span></div></label>
+      ${on('costs') ? `<label class="field"><span>Ausgaben pro Woche</span><div class="unit"><input id="eWeekEur" inputmode="decimal" placeholder="${eurHint(S.weekly?.g)}" value="${S.weekly?.eur ? n(S.weekly.eur) : ''}"><span>€</span></div></label>` : ''}</div>
+    <p class="hint" style="margin:8px 2px 14px">Optional: wie viel du vor der Pause gebraucht hast. Damit zeigt die App, was du sparst.${on('costs') && ppg ? ' Leer gelassene Ausgaben rechnet sie aus deinen Sortenpreisen.' : ''}</p>`}
     <label class="line first" style="margin-bottom:14px"><span>Ziel anzeigen<span class="sub">Nächstes Ziel und Pausenziel</span></span><input type="checkbox" class="switch" id="eGoal"${on('pause') ? ' checked' : ''}></label>`, () => {
     const d = parseInt($('#eClean').value, 10), goal = $('#eGoal').checked;
-    const eurIn = $('#eWeekEur'), weekly = { eur: eurIn ? num(eurIn.value) || 0 : S.weekly?.eur || 0, g: num($('#eWeekG').value) || 0 };
+    const eurIn = $('#eWeekEur'), gIn = $('#eWeekG');
+    const weekly = { eur: eurIn ? num(eurIn.value) || 0 : S.weekly?.eur || 0, g: gIn ? num(gIn.value) || 0 : S.weekly?.g || 0 };
     if (!(d > 0)) return alert('Bitte ein Datum vor heute oder eine Anzahl Tage eingeben.'), false;
     withUndo(`Konsumfrei: ${tage(d)}`, () => { S.cleanSince = addDays(t, -d); S.opt = S.opt.filter(x => x !== 'pause').concat(goal ? ['pause'] : []); S.weekly = weekly; });
   }, S.cleanSince && (() => withUndo('Startdatum entfernt', () => delete S.cleanSince)), 'Speichern', true);
   $('#editBody').oninput = e => { // keep date and day count in sync
     if (e.target.id === 'eCleanDate') $('#eClean').value = e.target.value ? daysBetween(e.target.value, t) : '';
     else if (e.target.id === 'eClean') { const d = parseInt(e.target.value, 10); $('#eCleanDate').value = d > 0 ? addDays(t, -d) : ''; }
+    else if (e.target.id === 'eWeekG' && $('#eWeekEur')) $('#eWeekEur').placeholder = eurHint(e.target.value);
   };
 }
 function endPause() { withUndo('Pausenziel beendet', () => S.pause = null); }
