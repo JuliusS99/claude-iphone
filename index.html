@@ -405,7 +405,7 @@ S.off = S.off.filter(x => x !== 'goals'); // switch of an earlier version
 // Optional parts of the app. Most are on until switched off; OPT_IN ones are off until switched on.
 const OPT_IN = ['pause'];
 const on = f => OPT_IN.includes(f) ? S.opt.includes(f) : !S.off.includes(f);
-const FEATURES = [['streak', 'Konsumfrei-Zähler', 'Zähler und Rekord'], ['pause', 'Pausenziel', 'Eine feste Zahl konsumfreier Tage als Ziel'], ['costs', 'Kosten', 'Preise, Ausgaben und Ersparnis'], ['rating', 'Bewertung', 'Sterne für Sorten']];
+const FEATURES = [['streak', 'Konsumfrei-Zähler', 'Zähler und Rekord'], ['pause', 'Ziele', 'Pausenziel und nächstes Ziel im Ring'], ['costs', 'Kosten', 'Preise, Ausgaben und Ersparnis'], ['rating', 'Bewertung', 'Sterne für Sorten']];
 const WEEKDAYS = ['montags', 'dienstags', 'mittwochs', 'donnerstags', 'freitags', 'samstags', 'sonntags'];
 const TOD = ['Morgens', 'Mittags', 'Abends', 'Nachts'];
 S.amounts = { Joint: 0.3, Bong: 0.1, Vaporizer: 0.15, Edible: 0.1, ...S.amounts }; // grams per unit
@@ -640,9 +640,9 @@ function span(d) {
 }
 
 function renderStreak(t, last) {
-  const pauseOn = on('pause'), best = longestBreak(marks(), t), P = pauseOn ? S.pause : null;
+  const goalsOn = on('pause'), best = longestBreak(marks(), t), P = goalsOn ? S.pause : null;
   const manual = !S.logs.some(l => l.date > (S.cleanSince || '')); // no entry yet that replaces the set start
-  const btn = pauseOn || manual ? `<div class="actions">${!pauseOn ? '' : P && t < P.end
+  const btn = goalsOn || manual ? `<div class="actions">${!goalsOn ? '' : P && t < P.end
     ? '<button class="danger" onclick="endPause()">Pausenziel beenden</button>'
     : `<button onclick="setPause()">${P ? 'Neues Pausenziel' : 'Pausenziel setzen'}</button>`}${manual ? '<button onclick="setCleanSince()">Anpassen</button>' : ''}</div>` : '';
   if (last === null && !P) { $('#streak').innerHTML = '<p class="empty">Der Zähler startet mit deinem ersten Eintrag. Schon länger konsumfrei? Trag ein, seit wann.</p><div class="actions"><button onclick="setCleanSince()">Konsumfreie Tage eintragen</button></div>'; return; }
@@ -668,9 +668,9 @@ function renderStreak(t, last) {
       <div class="foot"><span>Rekord</span><span>${tage(best)}</span></div>${btn}`;
   } else {
     const [goal, label] = nextMilestone(last), prev = MILESTONES.filter(([d]) => d <= last).pop()?.[0] || 0;
-    $('#streak').innerHTML = ring((last - prev) / (goal - prev), last, `${last === 1 ? 'Tag' : 'Tage'} konsumfrei`)
+    $('#streak').innerHTML = ring(goalsOn ? (last - prev) / (goal - prev) : 1, last, `${last === 1 ? 'Tag' : 'Tage'} konsumfrei`)
       + `<div class="ring-cap">${P ? '<span class="accent">Pausenziel erreicht</span> · ' : ''}seit ${longDay(addDays(lastDate, 1))}${last >= 7 ? `<br>Das sind ${span(last)}.` : ''}</div>`
-      + stats([['Ziel', label], recordCell, ...savedCell]) + btn;
+      + stats([...(goalsOn ? [['Ziel', label]] : []), recordCell, ...savedCell]) + btn;
   }
 }
 
@@ -689,12 +689,14 @@ function setCleanSince() {
   const t = today(), cur = S.cleanSince ? daysBetween(S.cleanSince, t) : '';
   openEdit('Konsumfrei seit', `<div class="row"><label class="field"><span>Letzter Konsum am</span><input type="date" id="eCleanDate" max="${addDays(t, -1)}" value="${S.cleanSince || ''}"></label>
     <label class="field"><span>Tage ohne Konsum</span><input id="eClean" inputmode="numeric" placeholder="z. B. 14" value="${cur}"></label></div>
-    <p class="hint" style="margin:0 2px 14px">Datum oder Tage eintragen, das andere füllt sich selbst. Für die Zeit, bevor du die App genutzt hast. Dein nächster Eintrag setzt den Zähler wie gewohnt zurück.</p>`, () => {
-    const d = parseInt($('#eClean').value, 10);
+    <p class="hint" style="margin:0 2px 14px">Datum oder Tage eintragen, das andere füllt sich selbst. Für die Zeit, bevor du die App genutzt hast. Dein nächster Eintrag setzt den Zähler wie gewohnt zurück.</p>
+    <label class="line first" style="margin-bottom:14px"><span>Ziel anzeigen<span class="sub">Nächstes Ziel und Pausenziel</span></span><input type="checkbox" class="switch" id="eGoal"${on('pause') ? ' checked' : ''}></label>`, () => {
+    const d = parseInt($('#eClean').value, 10), goal = $('#eGoal').checked;
     if (!(d > 0)) return alert('Bitte ein Datum vor heute oder eine Anzahl Tage eingeben.'), false;
-    withUndo(`Konsumfrei seit ${tage(d)}`, () => S.cleanSince = addDays(t, -d));
+    withUndo(`Konsumfrei: ${tage(d)}`, () => { S.cleanSince = addDays(t, -d); S.opt = S.opt.filter(x => x !== 'pause').concat(goal ? ['pause'] : []); });
   }, S.cleanSince && (() => withUndo('Startdatum entfernt', () => delete S.cleanSince)), 'Speichern', true);
   $('#editBody').oninput = e => { // keep date and day count in sync
+    if (e.target.id === 'eGoal') return;
     if (e.target.id === 'eCleanDate') $('#eClean').value = e.target.value ? daysBetween(e.target.value, t) : '';
     else { const d = parseInt(e.target.value, 10); $('#eCleanDate').value = d > 0 ? addDays(t, -d) : ''; }
   };
