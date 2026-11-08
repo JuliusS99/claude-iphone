@@ -400,9 +400,12 @@ const KEY = 'kontingent';
 const $ = q => document.querySelector(q);
 const $$ = q => document.querySelectorAll(q);
 let S = JSON.parse(localStorage.getItem(KEY) || 'null') || {};
-S = { strains: [], logs: [], until: '', breaks: [], pin: '', form: 'Joint', forms: Object.keys(FORMS), off: [], ...S };
-const on = feature => !S.off.includes(feature); // optional parts of the app: streak, costs, rating
-const FEATURES = [['streak', 'Konsumfrei-Zähler', 'Zähler und Rekord'], ['goals', 'Ziele', 'Pausenziel und nächster Meilenstein'], ['costs', 'Kosten', 'Preise, Ausgaben und Ersparnis'], ['rating', 'Bewertung', 'Sterne für Sorten']];
+S = { strains: [], logs: [], until: '', breaks: [], pin: '', form: 'Joint', forms: Object.keys(FORMS), off: [], opt: [], ...S };
+S.off = S.off.filter(x => x !== 'goals'); // switch of an earlier version
+// Optional parts of the app. Most are on until switched off; OPT_IN ones are off until switched on.
+const OPT_IN = ['pause'];
+const on = f => OPT_IN.includes(f) ? S.opt.includes(f) : !S.off.includes(f);
+const FEATURES = [['streak', 'Konsumfrei-Zähler', 'Zähler und Rekord'], ['pause', 'Pausenziel', 'Eine feste Zahl konsumfreier Tage als Ziel'], ['costs', 'Kosten', 'Preise, Ausgaben und Ersparnis'], ['rating', 'Bewertung', 'Sterne für Sorten']];
 const WEEKDAYS = ['montags', 'dienstags', 'mittwochs', 'donnerstags', 'freitags', 'samstags', 'sonntags'];
 const TOD = ['Morgens', 'Mittags', 'Abends', 'Nachts'];
 S.amounts = { Joint: 0.3, Bong: 0.1, Vaporizer: 0.15, Edible: 0.1, ...S.amounts }; // grams per unit
@@ -493,7 +496,7 @@ function render() {
   const stock = S.strains.reduce((a, s) => a + s.grams, 0);
   const todays = S.logs.filter(l => l.date === t);
   const todayG = sum(todays);
-  const pause = on('streak') && on('goals') ? S.pause : null; // the pause goal lives in the streak card
+  const pause = on('streak') && on('pause') ? S.pause : null; // the pause goal lives in the streak card
   const b = budget(stock, todayG, t, until, S.breaks, pause);
   const avg = dailyAvg(S.logs, t);
   const last = daysSinceLast(marks(), t);
@@ -597,7 +600,7 @@ function render() {
     $('#features').innerHTML = FEATURES.map(([k, label, sub], i) => `<label class="line${i ? '' : ' first'}">
       <span>${label}<span class="sub">${sub}</span></span><input type="checkbox" class="switch" data-feat="${k}"></label>`).join('');
   $$('#features [data-feat]').forEach(x => x.checked = on(x.dataset.feat));
-  $('#features [data-feat=goals]').parentElement.hidden = !on('streak'); // goals live in the counter
+  $('#features [data-feat=pause]').parentElement.hidden = !on('streak'); // the pause goal lives in the counter
   $('#backupInfo').textContent = S.lastBackup ? `Letztes Backup: ${day(S.lastBackup, { day: 'numeric', month: 'long' })}.` : 'Noch kein Backup.';
   $('#bioRow').hidden = !(S.pin && bioOK);
   $('#bioOn').checked = !!S.bioId;
@@ -637,9 +640,9 @@ function span(d) {
 }
 
 function renderStreak(t, last) {
-  const goals = on('goals'), best = longestBreak(marks(), t), P = goals ? S.pause : null;
+  const pauseOn = on('pause'), best = longestBreak(marks(), t), P = pauseOn ? S.pause : null;
   const manual = !S.logs.some(l => l.date > (S.cleanSince || '')); // no entry yet that replaces the set start
-  const btn = goals || manual ? `<div class="actions">${!goals ? '' : P && t < P.end
+  const btn = pauseOn || manual ? `<div class="actions">${!pauseOn ? '' : P && t < P.end
     ? '<button class="danger" onclick="endPause()">Pausenziel beenden</button>'
     : `<button onclick="setPause()">${P ? 'Neues Pausenziel' : 'Pausenziel setzen'}</button>`}${manual ? '<button onclick="setCleanSince()">Anpassen</button>' : ''}</div>` : '';
   if (last === null && !P) { $('#streak').innerHTML = '<p class="empty">Der Zähler startet mit deinem ersten Eintrag. Schon länger konsumfrei? Trag ein, seit wann.</p><div class="actions"><button onclick="setCleanSince()">Konsumfreie Tage eintragen</button></div>'; return; }
@@ -665,9 +668,9 @@ function renderStreak(t, last) {
       <div class="foot"><span>Rekord</span><span>${tage(best)}</span></div>${btn}`;
   } else {
     const [goal, label] = nextMilestone(last), prev = MILESTONES.filter(([d]) => d <= last).pop()?.[0] || 0;
-    $('#streak').innerHTML = ring(goals ? (last - prev) / (goal - prev) : 1, last, `${last === 1 ? 'Tag' : 'Tage'} konsumfrei`)
+    $('#streak').innerHTML = ring((last - prev) / (goal - prev), last, `${last === 1 ? 'Tag' : 'Tage'} konsumfrei`)
       + `<div class="ring-cap">${P ? '<span class="accent">Pausenziel erreicht</span> · ' : ''}seit ${longDay(addDays(lastDate, 1))}${last >= 7 ? `<br>Das sind ${span(last)}.` : ''}</div>`
-      + stats([...(goals ? [['Ziel', label]] : []), recordCell, ...savedCell]) + btn;
+      + stats([['Ziel', label], recordCell, ...savedCell]) + btn;
   }
 }
 
@@ -788,8 +791,8 @@ $('#formPick').onclick = e => {
   fillAmount();
 };
 $('#features').onchange = e => {
-  const k = e.target.dataset.feat;
-  S.off = e.target.checked ? S.off.filter(x => x !== k) : [...S.off, k];
+  const k = e.target.dataset.feat, list = OPT_IN.includes(k) ? 'opt' : 'off';
+  S[list] = OPT_IN.includes(k) === e.target.checked ? [...S[list], k] : S[list].filter(x => x !== k);
   e.target.blur();
   save();
 };
@@ -859,7 +862,7 @@ function logUse() {
   if (!s) return;
   if (!(x > 0)) return alert('Bitte eine Menge in Gramm angeben.');
   if (x > s.grams + 1e-9) return alert(`Im Bestand sind nur noch ${g(s.grams)} ${s.name}.`);
-  const date = today(), endsPause = on('goals') && S.pause && date >= S.pause.start && date < S.pause.end;
+  const date = today(), endsPause = on('pause') && S.pause && date >= S.pause.start && date < S.pause.end;
   withUndo(`${g(x)} erfasst${endsPause ? ' · Pausenziel beendet' : ''}`, () => {
     s.grams = r3(s.grams - x);
     S.logs.push({ id: Date.now(), strainId: s.id, name: s.name, thc: s.thc, price: s.price || 0, form: S.form, grams: x, date });
