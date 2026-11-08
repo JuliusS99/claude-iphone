@@ -44,6 +44,15 @@
   .streak-num { font-size: 40px; font-weight: 600; letter-spacing: -.03em; line-height: 1.1; margin: 4px 0 6px; }
   .streak-num span { font-size: 19px; font-weight: 500; letter-spacing: 0; color: var(--muted); margin-left: 2px; }
   .accent { color: var(--accent); }
+  .ring { position: relative; width: 184px; margin: 8px auto 0; }
+  .ring svg { display: block; width: 100%; height: auto; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 9; }
+  .ring-track { stroke: var(--track); }
+  .ring-val { stroke: url(#ringG); stroke-linecap: round; }
+  .ring > div { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+  .ring-num { font-size: 56px; font-weight: 600; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .ring-unit { font-size: 14px; color: var(--muted); margin-top: 6px; }
+  .ring-cap { text-align: center; font-size: 15px; color: var(--muted); margin-top: 14px; line-height: 1.45; }
   .hero-num { font-size: 52px; font-weight: 600; letter-spacing: -.03em; margin: 4px 0 12px; }
   .over { color: var(--danger); }
   .meter { height: 4px; background: var(--track); border-radius: 2px; overflow: hidden; }
@@ -610,6 +619,20 @@ function render() {
 // Consumption days for the streak: the logs plus the last day before the app, if set (S.cleanSince).
 const marks = () => S.cleanSince ? [...S.logs, { date: S.cleanSince, grams: 0 }] : S.logs;
 
+// Progress ring around the streak number, same gradient as the charts.
+const RING = 2 * Math.PI * 70;
+const ring = (part, num, unit) => `<div class="ring"><svg viewBox="0 0 160 160" aria-hidden="true">
+  <defs><linearGradient id="ringG" x1="0" y1="1" x2="1" y2="0"><stop offset="0" style="stop-color:var(--chart-bottom)"/><stop offset="1" style="stop-color:var(--chart-top)"/></linearGradient></defs>
+  <circle cx="80" cy="80" r="70" class="ring-track"/>
+  ${part > 0 ? `<circle cx="80" cy="80" r="70" class="ring-val" stroke-dasharray="${RING}" stroke-dashoffset="${RING * (1 - Math.min(1, part))}"/>` : ''}
+  </svg><div><div class="ring-num">${num}</div><div class="ring-unit">${unit}</div></div></div>`;
+// 16 -> "2 Wochen und 2 Tage", 45 -> "1 Monat und 15 Tage"
+function span(d) {
+  const [n, one, many] = d >= 365 ? [Math.floor(d / 365), 'Jahr', 'Jahre'] : d >= 30 ? [Math.floor(d / 30), 'Monat', 'Monate'] : [Math.floor(d / 7), 'Woche', 'Wochen'];
+  const rest = d >= 365 ? Math.floor(d % 365 / 30) : d >= 30 ? d % 30 : d % 7, restU = d >= 365 ? (rest === 1 ? 'Monat' : 'Monate') : rest === 1 ? 'Tag' : 'Tage';
+  return `${n} ${n === 1 ? one : many}${rest ? ` und ${rest} ${restU}` : ''}`;
+}
+
 function renderStreak(t, last) {
   const best = longestBreak(marks(), t), P = S.pause;
   const manual = !S.logs.some(l => l.date > (S.cleanSince || '')); // no entry yet that replaces the set start
@@ -618,30 +641,30 @@ function renderStreak(t, last) {
     : `<button onclick="setPause()">${P ? 'Neues Pausenziel' : 'Pausenziel setzen'}</button>`}${manual ? '<button onclick="setCleanSince()">Anpassen</button>' : ''}</div>`;
   if (last === null && !P) { $('#streak').innerHTML = '<p class="empty">Der Zähler startet mit deinem ersten Eintrag. Schon länger konsumfrei? Trag ein, seit wann.</p><div class="actions"><button onclick="setCleanSince()">Konsumfreie Tage eintragen</button></div>'; return; }
   const lastDate = last ? addDays(t, -last) : null, before = lastDate && dailyAvg(S.logs, lastDate); // spending before the break
-  const saved = on('costs') && before && before.cost * last >= 0.5 ? ` · ca. ${eur(before.cost * last)} gespart` : '';
+  const saved = on('costs') && before && before.cost * last >= 0.5 ? before.cost * last : 0;
   const longDay = d => day(d, { weekday: 'long', day: 'numeric', month: 'long' });
+  const record = last >= best && last > 0;
+  const stats = cells => `<div class="stats" style="grid-template-columns:repeat(${cells.length},1fr)">${cells.map(([l, v, cls = '']) => `<div><div class="eyebrow">${l}</div><div class="stat ${cls}">${v}</div></div>`).join('')}</div>`;
+  const recordCell = record ? ['Rekord', 'Neu', 'accent'] : ['Rekord', tage(best)];
+  const savedCell = saved ? [['Gespart', eur(saved)]] : [];
 
   if (P && t < P.start) {
     $('#streak').innerHTML = `<div class="streak-num">${P.days} <span>Tage Ziel</span></div>
       <div class="muted small">Die Pause startet morgen.</div>${btn}`;
   } else if (P && t < P.end) {
     const dayN = daysBetween(P.start, t) + 1, rest = P.days - dayN;
-    $('#streak').innerHTML = `<div class="streak-num">${dayN} <span>von ${P.days} Tagen</span></div>
-      <div class="muted small">Pausenziel bis ${longDay(addDays(P.end, -1))}${saved}</div>
-      <div class="meter" style="margin-top:14px"><div style="width:${dayN / P.days * 100}%"></div></div>
-      <div class="foot"><span>${rest ? `Noch ${tage(rest)}` : 'Heute ist der letzte Tag'}</span>
-        <span class="${last >= best ? 'accent' : ''}">${last >= best ? 'Neuer Rekord' : 'Rekord ' + tage(best)}</span></div>${btn}`;
+    $('#streak').innerHTML = ring(dayN / P.days, dayN, `von ${P.days} Tagen`)
+      + `<div class="ring-cap">Pausenziel bis ${longDay(addDays(P.end, -1))}</div>`
+      + stats([['Noch', rest ? tage(rest) : 'Letzter Tag'], recordCell, ...savedCell]) + btn;
   } else if (!last) {
     $('#streak').innerHTML = `<div class="streak-num">0 <span>Tage</span></div>
       <div class="muted small">Heute konsumiert. Der Zähler startet morgen neu.</div>
       <div class="foot"><span>Rekord</span><span>${tage(best)}</span></div>${btn}`;
   } else {
     const [goal, label] = nextMilestone(last), prev = MILESTONES.filter(([d]) => d <= last).pop()?.[0] || 0;
-    $('#streak').innerHTML = `<div class="streak-num">${last} <span>${last === 1 ? 'Tag' : 'Tage'}</span></div>
-      <div class="muted small">${P ? `<span class="accent">Pausenziel von ${tage(P.days)} erreicht</span> · ` : ''}seit ${longDay(addDays(lastDate, 1))}${saved}</div>
-      <div class="meter" style="margin-top:14px"><div style="width:${(last - prev) / (goal - prev) * 100}%"></div></div>
-      <div class="foot"><span>Noch ${tage(goal - last)} bis ${label}</span>
-        <span class="${last >= best ? 'accent' : ''}">${last >= best ? 'Neuer Rekord' : 'Rekord ' + tage(best)}</span></div>${btn}`;
+    $('#streak').innerHTML = ring((last - prev) / (goal - prev), last, `${last === 1 ? 'Tag' : 'Tage'} konsumfrei`)
+      + `<div class="ring-cap">${P ? '<span class="accent">Pausenziel erreicht</span> · ' : ''}seit ${longDay(addDays(lastDate, 1))}${last >= 7 ? `<br>Das sind ${span(last)}.` : ''}</div>`
+      + stats([['Ziel', label], recordCell, ...savedCell]) + btn;
   }
 }
 
@@ -658,12 +681,17 @@ function setPause() {
 }
 function setCleanSince() {
   const t = today(), cur = S.cleanSince ? daysBetween(S.cleanSince, t) : '';
-  openEdit('Konsumfrei seit', `<label class="field"><span>Tage ohne Konsum</span><input id="eClean" inputmode="numeric" placeholder="z. B. 14" value="${cur}"></label>
-    <p class="hint" style="margin:0 2px 14px">Für die Zeit, bevor du die App genutzt hast. Dein nächster Eintrag setzt den Zähler wie gewohnt zurück.</p>`, () => {
+  openEdit('Konsumfrei seit', `<div class="row"><label class="field"><span>Letzter Konsum am</span><input type="date" id="eCleanDate" max="${addDays(t, -1)}" value="${S.cleanSince || ''}"></label>
+    <label class="field"><span>Tage ohne Konsum</span><input id="eClean" inputmode="numeric" placeholder="z. B. 14" value="${cur}"></label></div>
+    <p class="hint" style="margin:0 2px 14px">Datum oder Tage eintragen, das andere füllt sich selbst. Für die Zeit, bevor du die App genutzt hast. Dein nächster Eintrag setzt den Zähler wie gewohnt zurück.</p>`, () => {
     const d = parseInt($('#eClean').value, 10);
-    if (!(d > 0)) return alert('Bitte eine Anzahl Tage eingeben.'), false;
+    if (!(d > 0)) return alert('Bitte ein Datum vor heute oder eine Anzahl Tage eingeben.'), false;
     withUndo(`Konsumfrei seit ${tage(d)}`, () => S.cleanSince = addDays(t, -d));
   }, S.cleanSince && (() => withUndo('Startdatum entfernt', () => delete S.cleanSince)), 'Speichern', true);
+  $('#editBody').oninput = e => { // keep date and day count in sync
+    if (e.target.id === 'eCleanDate') $('#eClean').value = e.target.value ? daysBetween(e.target.value, t) : '';
+    else { const d = parseInt(e.target.value, 10); $('#eCleanDate').value = d > 0 ? addDays(t, -d) : ''; }
+  };
 }
 function endPause() { withUndo('Pausenziel beendet', () => S.pause = null); }
 
