@@ -1,6 +1,6 @@
 // node test.js
 const assert = require('node:assert');
-const { parseLabel, budget, dailyAvg, daysSinceLast, activeDays, absorbedMg, addDays, longestBreak, nextMilestone, planLimit, weeksToTarget } = require('./logic.js');
+const { parseLabel, budget, dailyAvg, daysSinceLast, activeDays, absorbedMg, addDays, longestBreak, nextMilestone, planLimit, weeksToTarget, patterns } = require('./logic.js');
 const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-9, `${a} != ${b}`);
 
 assert.deepStrictEqual(parseLabel('Amnesia Haze\nTHC: 22,5 %\nCBD: <1 %\nInhalt: 10 g'),
@@ -56,5 +56,17 @@ near(planLimit(plan, '2026-11-15'), 0.405);        // week 3
 near(planLimit(plan, '2027-06-01'), 0.3);          // floor
 assert.strictEqual(planLimit({ ...plan, on: false }, '2026-11-08'), null);
 assert.strictEqual(weeksToTarget(plan), 5);        // 0.5*0.9^5 = 0.295 <= 0.3
+
+// patterns: Fri 2026-11-06 21:00 (evening), Sat 2026-11-07 08:00 (morning), one entry moved to Thu
+const at = (y, m, d, h) => new Date(y, m - 1, d, h).getTime();
+const pt = patterns([
+  { id: at(2026, 11, 6, 21), date: '2026-11-06', grams: 0.5 },
+  { id: at(2026, 11, 7, 8), date: '2026-11-07', grams: 0.2 },
+  { id: at(2026, 11, 7, 23), date: '2026-11-05', grams: 0.3 }, // logged Sat night for Thu: weekday counts, time does not
+]);
+assert.deepStrictEqual(pt.times, [0.2, 0, 0.5, 0]);
+assert.deepStrictEqual(pt.weekdays, [0, 0, 0, 0.3, 0.5, 0.2, 0]);
+assert.strictEqual(pt.timed, 2);
+assert.strictEqual(patterns([{ id: at(2026, 11, 7, 2), date: '2026-11-07', grams: 1 }]).times[3], 1); // 2 am = night
 
 console.log('ok');

@@ -82,10 +82,26 @@ function planLimit(plan, d) {
 }
 const weeksToTarget = p => p.target >= p.start ? 0 : p.pct <= 0 ? Infinity : Math.ceil(Math.log(p.target / p.start) / Math.log(1 - p.pct / 100));
 
+// When consumption happens: grams by time of day [morning 5-11, midday 11-17, evening 17-22, night 22-5]
+// (from the logging time) and by weekday, Monday first. Entries moved to another day have no usable time.
+function patterns(logs) {
+  const times = [0, 0, 0, 0], weekdays = [0, 0, 0, 0, 0, 0, 0];
+  let timed = 0;
+  for (const l of logs) {
+    weekdays[(weekday(l.date) + 6) % 7] += l.grams;
+    const t = new Date(l.id);
+    if (t.toLocaleDateString('sv') !== l.date) continue;
+    const h = t.getHours();
+    times[h >= 5 && h < 11 ? 0 : h >= 11 && h < 17 ? 1 : h >= 17 && h < 22 ? 2 : 3] += l.grams;
+    timed++;
+  }
+  return { times, weekdays, timed };
+}
+
 // Next streak goal: [days, label]
 const MILESTONES = [[1, '1 Tag'], [3, '3 Tage'], [7, '1 Woche'], [14, '2 Wochen'], [30, '1 Monat'],
   [60, '2 Monate'], [90, '3 Monate'], [180, '6 Monate'], [365, '1 Jahr']];
 const nextMilestone = days => MILESTONES.find(([d]) => d > days)
   || (y => [y * 365, `${y} Jahre`])(Math.ceil((days + 1) / 365));
 
-if (typeof module !== 'undefined') module.exports = { parseLabel, budget, num, dailyAvg, daysSinceLast, activeDays, absorbedMg, addDays, longestBreak, nextMilestone, planLimit, weeksToTarget };
+if (typeof module !== 'undefined') module.exports = { parseLabel, budget, num, dailyAvg, daysSinceLast, activeDays, absorbedMg, addDays, longestBreak, nextMilestone, planLimit, weeksToTarget, patterns };

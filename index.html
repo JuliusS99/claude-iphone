@@ -85,6 +85,7 @@
   .chips button { flex: 1; padding: 12px 0; border-radius: 10px; background: var(--bg); color: var(--text); font-size: 15px; }
   .seg { display: flex; padding: 3px; margin-bottom: 10px; border-radius: 10px; background: var(--bg); }
   .seg button { flex: 1; padding: 12px 0; border-radius: 8px; color: var(--text); font-size: 15px; }
+  .seg[hidden] { display: none; }
   .seg button.on { background: var(--raised); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
 
   .item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
@@ -122,6 +123,14 @@
   .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
   .days button { padding: 12px 0; border-radius: 10px; background: var(--bg); color: var(--text); font-size: 15px; }
   .days button.on { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+  .days.four { grid-template-columns: repeat(4, 1fr); }
+  .sub { display: block; font-size: 13px; color: var(--muted); }
+  .hbars { display: grid; gap: 10px; margin: 14px 0 0; }
+  .hbar { display: grid; grid-template-columns: 76px 1fr 40px; align-items: center; gap: 10px; font-size: 14px; }
+  .hbar > div { height: 8px; border-radius: 4px; background: var(--track); overflow: hidden; }
+  .hbar > div > div { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--chart-bottom), var(--chart-top)); }
+  .hbar > span:last-child { text-align: right; color: var(--muted); }
+  .chart.mini { height: 80px; margin-top: 20px; }
 
 
   nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: flex; justify-content: center;
@@ -161,7 +170,7 @@
   .stars.big svg { width: 30px; height: 30px; }
   .item.strain { display: grid; grid-template-columns: 1fr auto; column-gap: 12px; }
   .acts { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; margin-bottom: -10px; }
-  .acts > button { min-height: 44px; padding-left: 16px; font-size: 15px; }
+  .acts > button { min-height: 44px; padding-left: 16px; margin-left: auto; font-size: 15px; }
   .used-up .grow, .used-up .amount { opacity: .5; }
   .addrow { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 52px; font-weight: 500; text-align: left; }
   .addrow svg { width: 20px; height: 20px; }
@@ -231,6 +240,11 @@
     </div>
   </div>
 
+  <div class="card" id="backupCard" hidden>
+    <div class="small" id="backupText"></div>
+    <div class="actions"><button onclick="exportData()">Jetzt sichern</button><button class="muted" onclick="snoozeBackup()">Später</button></div>
+  </div>
+
   <div id="todayBlock">
     <h2>Heute erfasst</h2>
     <div class="card" id="todayLogs"></div>
@@ -247,7 +261,7 @@
   <div class="card">
     <div class="stats bare">
       <div><div class="eyebrow">Gesamt</div><div id="stockTotal" class="stat"></div></div>
-      <div><div class="eyebrow">Wert</div><div id="stockValue" class="stat"></div></div>
+      <div><div class="eyebrow" id="stockValueL">Wert</div><div id="stockValue" class="stat"></div></div>
       <div><div class="eyebrow">Leer am</div><div id="runout" class="stat"></div></div>
     </div>
   </div>
@@ -263,7 +277,7 @@
   <div class="card">
     <div class="stats bare">
       <div><div class="eyebrow">Menge</div><div id="avgGrams" class="stat"></div></div>
-      <div><div class="eyebrow">Kosten</div><div id="avgCost" class="stat"></div></div>
+      <div><div class="eyebrow" id="avgCostL">Kosten</div><div id="avgCost" class="stat"></div></div>
       <div><div class="eyebrow">Pro Monat</div><div id="avgMonth" class="stat"></div></div>
     </div>
     <p class="hint" id="avgNote"></p>
@@ -275,6 +289,9 @@
     <div class="foot" id="chartFoot"></div>
   </div>
 
+  <h2>Muster</h2>
+  <div class="card" id="patterns"></div>
+
   <h2>Monat</h2>
   <div class="card">
     <div class="month-head">
@@ -285,7 +302,7 @@
     <div class="cal" id="cal"></div>
     <div class="stats">
       <div><div class="eyebrow">Menge</div><div id="mGrams" class="stat"></div></div>
-      <div><div class="eyebrow">Kosten</div><div id="mCost" class="stat"></div></div>
+      <div><div class="eyebrow" id="mCostL">Kosten</div><div id="mCost" class="stat"></div></div>
       <div><div class="eyebrow">Konsumfrei</div><div id="mFree" class="stat"></div></div>
     </div>
     <p class="hint" id="mCompare"></p>
@@ -297,15 +314,25 @@
 
 <!-- Einstellungen -->
 <section data-tab="einstellungen" hidden>
-  <h2>Pausentage</h2>
+  <h2>Konsumformen</h2>
   <div class="card">
-    <div class="days" id="breaks"></div>
-    <p class="hint">An Pausentagen ist dein Budget 0 g. Die Menge verteilt sich auf die übrigen Tage.</p>
+    <div class="days four" id="formPick"></div>
+    <p class="hint">Nur ausgewählte Formen erscheinen beim Erfassen. Mindestens eine bleibt aktiv.</p>
   </div>
 
   <h2>Menge pro Konsum</h2>
   <div class="card" id="amounts"></div>
   <p class="hint">Wird beim Erfassen automatisch eingetragen. Edibles: Gras pro Stück, z. B. 1 g auf 10 Stück = 0,1 g.</p>
+
+  <h2>Funktionen</h2>
+  <div class="card" id="features"></div>
+  <p class="hint">Ausgeschaltete Funktionen verschwinden aus der App. Deine Daten bleiben erhalten.</p>
+
+  <h2>Pausentage</h2>
+  <div class="card">
+    <div class="days" id="breaks"></div>
+    <p class="hint">An Pausentagen ist dein Budget 0 g. Die Menge verteilt sich auf die übrigen Tage.</p>
+  </div>
 
   <h2>Reduktionsplan</h2>
   <div class="card" id="plan"></div>
@@ -314,7 +341,8 @@
   <h2>Sichtschutz</h2>
   <div class="card">
     <div class="line first"><span>PIN-Sperre</span><button id="pinBtn" onclick="togglePin()"></button></div>
-    <p class="hint">Fragt beim Öffnen nach einer PIN. Schützt vor neugierigen Blicken, verschlüsselt die Daten aber nicht.</p>
+    <label class="line" id="bioRow" hidden><span>Face ID / Touch ID</span><input type="checkbox" class="switch" id="bioOn"></label>
+    <p class="hint">Fragt beim Öffnen nach Face ID oder PIN. Schützt vor neugierigen Blicken, verschlüsselt die Daten aber nicht.</p>
   </div>
 
   <h2>Daten</h2>
@@ -322,7 +350,7 @@
     <button class="line first" onclick="exportData()">Backup exportieren</button>
     <button class="line" onclick="$('#imp').click()">Backup importieren</button>
     <input type="file" id="imp" accept="application/json,.json" hidden onchange="importData(this.files[0]); this.value = ''">
-    <p class="hint">Alle Daten liegen nur auf diesem Gerät. Ein Backup kannst du in iCloud Drive sichern.</p>
+    <p class="hint"><span id="backupInfo"></span> Alle Daten liegen nur auf diesem Gerät. Sichere das Backup in iCloud Drive („In Dateien sichern“).</p>
   </div>
 </section>
 
@@ -362,7 +390,11 @@ const KEY = 'kontingent';
 const $ = q => document.querySelector(q);
 const $$ = q => document.querySelectorAll(q);
 let S = JSON.parse(localStorage.getItem(KEY) || 'null') || {};
-S = { strains: [], logs: [], until: '', breaks: [], pin: '', form: 'Joint', ...S };
+S = { strains: [], logs: [], until: '', breaks: [], pin: '', form: 'Joint', forms: Object.keys(FORMS), off: [], ...S };
+const on = feature => !S.off.includes(feature); // optional parts of the app: streak, costs, rating
+const FEATURES = [['streak', 'Konsumfrei-Zähler', 'Zähler, Rekord und Pausenziel'], ['costs', 'Kosten', 'Preise, Ausgaben und Ersparnis'], ['rating', 'Bewertung', 'Sterne für Sorten']];
+const WEEKDAYS = ['montags', 'dienstags', 'mittwochs', 'donnerstags', 'freitags', 'samstags', 'sonntags'];
+const TOD = ['Morgens', 'Mittags', 'Abends', 'Nachts'];
 S.amounts = { Joint: 0.3, Bong: 0.1, Vaporizer: 0.15, Edible: 0.1, ...S.amounts }; // grams per unit
 
 const TITLES = { heute: 'Heute', bestand: 'Bestand', statistik: 'Statistik', einstellungen: 'Einstellungen' };
@@ -442,7 +474,7 @@ $('#nav').onclick = e => { const b = e.target.closest('button'); if (b) show(b.d
 
 const logRow = (l, when) => `<div class="item tap" data-lid="${l.id}"><div class="date">${when}</div>
   <div class="grow"><div class="name">${esc(l.name)}</div>
-    <div class="muted small">${l.form || 'Joint'} · ca. ${Math.round(absorbedMg(l))} mg THC${l.price ? ' · ' + eur(l.grams * l.price) : ''}</div></div>
+    <div class="muted small">${l.form || 'Joint'} · ca. ${Math.round(absorbedMg(l))} mg THC${l.price && on('costs') ? ' · ' + eur(l.grams * l.price) : ''}</div></div>
   <div class="amount">${g(l.grams)}</div>
   <button class="icon" aria-label="Eintrag löschen" data-del>${X}</button></div>`;
 
@@ -451,12 +483,13 @@ function render() {
   const stock = S.strains.reduce((a, s) => a + s.grams, 0);
   const todays = S.logs.filter(l => l.date === t);
   const todayG = sum(todays);
-  const b = budget(stock, todayG, t, until, S.breaks, S.pause);
+  const pause = on('streak') ? S.pause : null; // the pause goal lives in the streak card
+  const b = budget(stock, todayG, t, until, S.breaks, pause);
   const avg = dailyAvg(S.logs, t);
   const last = daysSinceLast(S.logs, t);
   const lim = planLimit(S.plan, t), planned = b && lim !== null && lim < b.perDay;
   const perDay = b ? (planned ? lim : b.perDay) : 0, left = b ? (b.isBreak ? 0 : perDay) - todayG : 0;
-  const inPause = S.pause && t >= S.pause.start && t < S.pause.end;
+  const inPause = pause && t >= pause.start && t < pause.end;
 
   // Heute
   const avail = S.strains.filter(s => s.grams > 0), fresh = !S.strains.length && !S.logs.length;
@@ -493,30 +526,40 @@ function render() {
     : S.strains.length ? 'Dein Bestand ist aufgebraucht. Fülle eine Sorte nach oder füge eine neue hinzu.' : 'Kein Bestand vorhanden.';
   $('#logEmptyBtn').textContent = S.strains.length ? 'Zum Bestand' : 'Erste Sorte hinzufügen';
   $('#logEmptyBtn').onclick = () => S.strains.length ? show('bestand') : addStrain();
-  $('#forms').innerHTML = Object.keys(FORMS).map(f =>
+  if (!S.forms.includes(S.form)) S.form = S.forms[0];
+  $('#forms').hidden = S.forms.length < 2; // one form: nothing to choose
+  $('#forms').innerHTML = S.forms.map(f =>
     `<button role="radio" aria-checked="${f === S.form}" class="${f === S.form ? 'on' : ''}" data-f="${f}">${f}</button>`).join('');
+  // backup reminder: 7 days after the first entry without any backup, then every 30 days
+  const firstLog = S.logs.reduce((a, l) => (l.date < a ? l.date : a), t);
+  const since = S.lastBackup ? daysBetween(S.lastBackup, t) : daysBetween(firstLog, t);
+  $('#backupCard').hidden = !S.logs.length || since < (S.lastBackup ? 30 : 7) || (S.backupSnooze && S.backupSnooze > t);
+  $('#backupText').textContent = (S.lastBackup ? `Dein letztes Backup ist ${tage(since)} alt.` : 'Du hast noch kein Backup.')
+    + ' Sichere deine Daten, damit sie nicht verloren gehen, wenn die App vom Home-Bildschirm entfernt wird.';
   $('#todayBlock').hidden = !todays.length;
   $('#todayLogs').innerHTML = [...todays].reverse()
     .map(l => logRow(l, new Date(l.id).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }))).join('');
-  $('#streakBlock').hidden = last === null && !S.pause;
+  $('#streakBlock').hidden = !on('streak') || (last === null && !S.pause);
   renderStreak(t, last);
 
   // Bestand: used-up strains last and dimmed (kept for their rating)
   $('#stockTotal').textContent = g(stock);
-  $('#stockValue').textContent = eur(S.strains.reduce((a, s) => a + s.grams * (s.price || 0), 0));
+  $('#stockValueL').textContent = on('costs') ? 'Wert' : 'Sorten';
+  $('#stockValue').textContent = on('costs') ? eur(S.strains.reduce((a, s) => a + s.grams * (s.price || 0), 0)) : S.strains.filter(s => s.grams > 0).length;
   $('#runout').textContent = avg && avg.grams > 0 && stock > 0
     ? day(addDays(t, Math.floor(stock / avg.grams)), { day: 'numeric', month: 'short' }) : '–';
   $('#stock').innerHTML = [...S.strains].sort((a, b) => (b.grams > 0) - (a.grams > 0)).map(s => `<div class="item strain tap${s.grams > 0 ? '' : ' used-up'}" data-sid="${s.id}">
       <div class="grow"><div class="name">${esc(s.name)}</div>
-        <div class="muted small">THC ${n(s.thc)} % · CBD ${n(s.cbd)} %${s.price ? ' · ' + eur(s.price) + '/g' : ''}</div></div>
+        <div class="muted small">THC ${n(s.thc)} % · CBD ${n(s.cbd)} %${s.price && on('costs') ? ' · ' + eur(s.price) + '/g' : ''}</div></div>
       <div class="amount">${s.grams > 0 ? g(s.grams) : 'leer'}</div>
-      <div class="acts">${stars(s.rating || 0)}<button data-restock>Nachfüllen</button></div></div>`).join('')
+      <div class="acts">${on('rating') ? stars(s.rating || 0) : ''}<button data-restock>Nachfüllen</button></div></div>`).join('')
     || '<p class="empty">Noch keine Sorte erfasst.</p>';
 
   // Statistik: Tagesbedarf
   $('#avgGrams').textContent = avg ? g(avg.grams) : '–';
-  $('#avgCost').textContent = avg ? eur(avg.cost) : '–';
-  $('#avgMonth').textContent = avg ? eur(avg.cost * 30) : '–';
+  $('#avgCostL').textContent = on('costs') ? 'Kosten' : 'Pro Woche';
+  $('#avgCost').textContent = !avg ? '–' : on('costs') ? eur(avg.cost) : g(avg.grams * 7);
+  $('#avgMonth').textContent = !avg ? '–' : on('costs') ? eur(avg.cost * 30) : g(avg.grams * 30);
   const diff = avg && b && perDay > 0 ? Math.round((avg.grams / perDay - 1) * 100) : null;
   $('#avgNote').textContent = !avg ? 'Erscheint nach dem ersten Eintrag.'
     : `Durchschnitt pro Tag über die letzten ${avg.days} ${avg.days === 1 ? 'Tag' : 'Tage'}.`
@@ -531,16 +574,25 @@ function render() {
       <span>${day(d, { weekday: 'short' }).slice(0, 2)}</span></div>`).join('');
   $('#chartFoot').innerHTML = `<span>Summe ${g(sum7)}</span><span>Ø ${g(sum7 / 7)} pro Tag</span>`;
 
+  renderPatterns();
   renderMonth(t);
   $('#logs').innerHTML = [...S.logs].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id).slice(0, 50)
     .map(l => logRow(l, day(l.date, { day: '2-digit', month: '2-digit' }))).join('')
     || '<p class="empty">Noch keine Einträge.</p>';
 
   // Einstellungen
+  $('#formPick').innerHTML = Object.keys(FORMS).map(f =>
+    `<button class="${S.forms.includes(f) ? 'on' : ''}" aria-pressed="${S.forms.includes(f)}" data-pf="${f}">${f}</button>`).join('');
+  if (!$('#features').contains(document.activeElement))
+    $('#features').innerHTML = FEATURES.map(([k, label, sub], i) => `<label class="line${i ? '' : ' first'}">
+      <span>${label}<span class="sub">${sub}</span></span><input type="checkbox" class="switch" data-feat="${k}"${on(k) ? ' checked' : ''}></label>`).join('');
+  $('#backupInfo').textContent = S.lastBackup ? `Letztes Backup: ${day(S.lastBackup, { day: 'numeric', month: 'long' })}.` : 'Noch kein Backup.';
+  $('#bioRow').hidden = !(S.pin && bioOK);
+  $('#bioOn').checked = !!S.bioId;
   $('#breaks').innerHTML = WEEK.map(([i, label]) =>
     `<button class="${S.breaks.includes(i) ? 'on' : ''}" aria-pressed="${S.breaks.includes(i)}" data-d="${i}">${label}</button>`).join('');
   if (!$('#amounts').contains(document.activeElement)) // don't re-render under the user's cursor
-    $('#amounts').innerHTML = Object.keys(FORMS).map((f, i) => `<label class="line${i ? '' : ' first'}"><span>1 ${f}</span>
+    $('#amounts').innerHTML = S.forms.map((f, i) => `<label class="line${i ? '' : ' first'}"><span>1 ${f}</span>
       <span><input inputmode="decimal" data-a="${f}" value="${n(S.amounts[f])}" aria-label="Gramm pro ${f}" size="5"> g</span></label>`).join('');
   const P = S.plan;
   if (!$('#plan').contains(document.activeElement))
@@ -562,7 +614,7 @@ function renderStreak(t, last) {
     : `<button onclick="setPause()">${P ? 'Neues Pausenziel' : 'Pausenziel setzen'}</button>`}</div>`;
   if (last === null && !P) { $('#streak').innerHTML = '<p class="empty">Der Zähler startet mit deinem ersten Eintrag.</p>'; return; }
   const lastDate = last ? addDays(t, -last) : null, before = lastDate && dailyAvg(S.logs, lastDate); // spending before the break
-  const saved = before && before.cost * last >= 0.5 ? ` · ca. ${eur(before.cost * last)} gespart` : '';
+  const saved = on('costs') && before && before.cost * last >= 0.5 ? ` · ca. ${eur(before.cost * last)} gespart` : '';
   const longDay = d => day(d, { weekday: 'long', day: 'numeric', month: 'long' });
 
   if (P && t < P.start) {
@@ -624,10 +676,24 @@ function renderMonth(t) {
   const prevMonth = iso(new Date(y, m - 2, 1)).slice(0, 7), cutDay = month === t.slice(0, 7) ? t.slice(8) : '31';
   const grams = sum(inMonth), prev = sum(S.logs.filter(l => l.date.startsWith(prevMonth) && l.date.slice(8) <= cutDay));
   $('#mGrams').textContent = g(grams);
-  $('#mCost').textContent = eur(cost(inMonth));
+  const elapsed = month === t.slice(0, 7) ? +t.slice(8) : len;
+  $('#mCostL').textContent = on('costs') ? 'Kosten' : 'Ø pro Tag';
+  $('#mCost').textContent = on('costs') ? eur(cost(inMonth)) : g(grams / elapsed);
   $('#mFree').textContent = `${free} ${free === 1 ? 'Tag' : 'Tage'}`;
   $('#mCompare').textContent = prev ? `${cutDay === '31' ? 'Vormonat' : `Vormonat bis zum ${+cutDay}.`}: ${g(prev)}, `
     + `${grams >= prev ? '+' : '−'}${Math.abs(Math.round((grams / prev - 1) * 100))} %` : '';
+}
+
+function renderPatterns() {
+  const pt = patterns(S.logs), totalT = pt.times.reduce((a, x) => a + x, 0), maxW = Math.max(...pt.weekdays);
+  if (S.logs.length < 5 || !totalT) { $('#patterns').innerHTML = '<p class="empty">Erscheint ab 5 Einträgen.</p>'; return; }
+  const maxT = Math.max(...pt.times), topT = pt.times.indexOf(maxT), topW = pt.weekdays.indexOf(maxW);
+  $('#patterns').innerHTML = `<div>Meist <b>${TOD[topT].toLowerCase()}</b> (${Math.round(maxT / totalT * 100)} %), am meisten <b>${WEEKDAYS[topW]}</b>.</div>
+    <div class="hbars">${TOD.map((label, i) => `<div class="hbar"><span>${label}</span><div><div style="width:${pt.times[i] / maxT * 100}%"></div></div>
+      <span>${Math.round(pt.times[i] / totalT * 100)} %</span></div>`).join('')}</div>
+    <div class="chart mini">${WEEK.map(([, d], i) => `<div class="col" title="${g(pt.weekdays[i])}">
+      <div class="bar${i === topW ? ' today' : ''}" style="height:${pt.weekdays[i] / maxW * 100}%"></div><span>${d}</span></div>`).join('')}</div>
+    <p class="hint">Morgens 5–11, mittags 11–17, abends 17–22, nachts 22–5 Uhr. Nach Menge in Gramm.</p>`;
 }
 
 function shiftMonth(k) { const [y, m] = month.split('-').map(Number); month = iso(new Date(y, m - 1 + k, 1)).slice(0, 7); render(); }
@@ -668,6 +734,21 @@ $('#todayLogs').onclick = $('#logs').onclick = e => {
   const l = S.logs.find(x => x.id === +row.dataset.lid);
   e.target.closest('[data-del]') ? delLog(l) : editLog(l);
 };
+$('#formPick').onclick = e => {
+  const f = e.target.dataset.pf;
+  if (!f) return;
+  const next = S.forms.includes(f) ? S.forms.filter(x => x !== f) : Object.keys(FORMS).filter(x => x === f || S.forms.includes(x));
+  if (!next.length) return; // at least one form stays
+  S.forms = next;
+  save();
+  fillAmount();
+};
+$('#features').onchange = e => {
+  const k = e.target.dataset.feat;
+  S.off = e.target.checked ? S.off.filter(x => x !== k) : [...S.off, k];
+  e.target.blur();
+  save();
+};
 $('#breaks').onclick = e => {
   const d = e.target.dataset.d;
   if (d == null) return;
@@ -681,12 +762,13 @@ const strainFields = (s, shownG, shownP) => `${s ? '' : `<label class="field"><s
   <div class="row"><label class="field"><span>THC %</span><input id="eThc" inputmode="decimal" value="${s ? n(s.thc) : ''}"></label>
     <label class="field"><span>CBD %</span><input id="eCbd" inputmode="decimal" value="${s ? n(s.cbd) : ''}"></label></div>
   <div class="row"><label class="field"><span>${s ? 'Bestand in g' : 'Menge in g'}</span><input id="eGrams" inputmode="decimal" value="${s ? shownG : ''}"></label>
-    <label class="field"><span>${s ? 'Preis pro g in €' : 'Preis gesamt in €'}</span><input id="ePrice" inputmode="decimal" value="${s ? shownP : ''}"></label></div>
-  ${s ? `<span class="field"><span>Bewertung</span></span><div id="eStars">${stars(s.rating || 0, true)}</div>` : ''}`;
+    ${on('costs') ? `<label class="field"><span>${s ? 'Preis pro g in €' : 'Preis gesamt in €'}</span><input id="ePrice" inputmode="decimal" value="${s ? shownP : ''}"></label>` : ''}</div>
+  ${s && on('rating') ? `<span class="field"><span>Bewertung</span></span><div id="eStars">${stars(s.rating || 0, true)}</div>` : ''}`;
+const priceIn = () => on('costs') ? num($('#ePrice').value) : NaN;
 
 function addStrain() {
   openEdit('Sorte hinzufügen', strainFields(), () => {
-    const name = $('#eName').value.trim(), grams = num($('#eGrams').value), total = num($('#ePrice').value), id = Date.now();
+    const name = $('#eName').value.trim(), grams = num($('#eGrams').value), total = priceIn(), id = Date.now();
     if (!name || !(grams > 0)) return alert('Bitte Name und Menge in Gramm angeben.'), false;
     withUndo(`${name} hinzugefügt`, () => {
       S.strains.push({ id, name, thc: num($('#eThc').value) || 0, cbd: num($('#eCbd').value) || 0, grams, price: total > 0 ? total / grams : 0 });
@@ -703,8 +785,8 @@ function addStrain() {
 
 function restock(s) {
   openEdit(`${s.name} nachfüllen`, `<input id="eGrams" inputmode="decimal" placeholder="Gramm" aria-label="Gramm">
-    <input id="ePrice" inputmode="decimal" placeholder="Preis gesamt € (optional)" aria-label="Preis gesamt in Euro">`, () => {
-    const x = num($('#eGrams').value), p = num($('#ePrice').value);
+    ${on('costs') ? '<input id="ePrice" inputmode="decimal" placeholder="Preis gesamt € (optional)" aria-label="Preis gesamt in Euro">' : ''}`, () => {
+    const x = num($('#eGrams').value), p = priceIn();
     if (!(x > 0)) return alert('Bitte eine Menge in Gramm angeben.'), false;
     withUndo(`${g(x)} ${s.name} nachgefüllt`, () => {
       s.price = (s.grams * (s.price || 0) + (p > 0 ? p : x * (s.price || 0))) / (s.grams + x); // weighted average price
@@ -721,7 +803,7 @@ function editStrain(s) {
     const thc = num($('#eThc').value) || 0;
     withUndo('Sorte gespeichert', () => {
       Object.assign(s, { name, thc, cbd: num($('#eCbd').value) || 0, grams: r3(grams),
-        price: keep('#ePrice', s.price, shownP) || 0, rating: $$('#eStars .on').length });
+        price: on('costs') ? keep('#ePrice', s.price, shownP) || 0 : s.price, rating: on('rating') ? $$('#eStars .on').length : s.rating });
       S.logs.forEach(l => { if (l.strainId === s.id) Object.assign(l, { name, thc }); }); // corrections apply to history too
     });
   }, () => withUndo(`${s.name} entfernt`, () => S.strains = S.strains.filter(x => x !== s)));
@@ -743,16 +825,17 @@ function logUse() {
 }
 
 function editLog(l) {
-  const s = S.strains.find(x => x.id === l.strainId), shownG = n(l.grams);
+  const s = S.strains.find(x => x.id === l.strainId), shownG = n(l.grams), lf = l.form || 'Joint';
+  const forms = Object.keys(FORMS).filter(f => S.forms.includes(f) || f === lf);
   openEdit('Eintrag bearbeiten', `<div class="row"><label class="field"><span>Menge in g</span><input id="eGrams" inputmode="decimal" value="${shownG}"></label>
       <label class="field"><span>Datum</span><input type="date" id="eDate" value="${l.date}"></label></div>
-    <div class="seg" id="eForm">${Object.keys(FORMS).map(f => `<button type="button" data-f="${f}" class="${f === (l.form || 'Joint') ? 'on' : ''}">${f}</button>`).join('')}</div>`, () => {
+    ${forms.length > 1 ? `<div class="seg" id="eForm">${forms.map(f => `<button type="button" data-f="${f}" class="${f === lf ? 'on' : ''}">${f}</button>`).join('')}</div>` : ''}`, () => {
     const x = keep('#eGrams', l.grams, shownG);
     if (!(x > 0)) return alert('Bitte eine Menge in Gramm angeben.'), false;
     if (s && x - l.grams > s.grams + 1e-9) return alert(`Im Bestand sind nur noch ${g(s.grams)} ${s.name}.`), false;
     withUndo('Eintrag gespeichert', () => {
       if (s) s.grams = r3(s.grams + l.grams - x);
-      Object.assign(l, { grams: x, date: $('#eDate').value || l.date, form: $('#eForm .on').dataset.f });
+      Object.assign(l, { grams: x, date: $('#eDate').value || l.date, form: $('#eForm .on')?.dataset.f || lf });
     });
   }, () => delLog(l));
   $('#editBody').onclick = pick('#eForm', 'data-f');
@@ -766,32 +849,75 @@ function delLog(l) {
   });
 }
 
-function exportData() {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(S)], { type: 'application/json' }));
-  a.download = `kontingent-${today()}.json`;
-  a.click();
+// iOS: the share sheet offers "In Dateien sichern" (iCloud Drive); elsewhere a plain download.
+async function exportData() {
+  const name = `kontingent-${today()}.json`, file = new File([JSON.stringify(S)], name, { type: 'application/json' });
+  try {
+    if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: name });
+    else { const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name; a.click(); }
+  } catch { return; } // share sheet cancelled: no backup made
+  S.lastBackup = today();
+  save();
 }
+function snoozeBackup() { S.backupSnooze = addDays(today(), 7); save(); }
 
 function importData(f) {
   f.text().then(t => {
     const d = JSON.parse(t);
     if (!Array.isArray(d.strains) || !Array.isArray(d.logs)) throw 0;
-    if (confirm('Aktuelle Daten durch das Backup ersetzen?')) { S = { ...S, ...d }; save(); }
+    if (confirm('Aktuelle Daten durch das Backup ersetzen?')) { S = { ...S, ...d, bioId: S.bioId }; save(); } // Face ID key belongs to this device
   }).catch(() => alert('Die Datei ist kein gültiges Backup.'));
 }
 
 // PIN lock. Only a hash is stored, so a reused PIN never sits in plain text.
 const hash = async p => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(KEY + ':' + p)))]
   .map(b => b.toString(16).padStart(2, '0')).join('');
-let pinMode = null, pinBuf = '', pinFirst = '';
+let pinMode = null, pinBuf = '', pinFirst = '', pinFailed = false;
+
+// Face ID / Touch ID via the platform authenticator (iOS shows it as a passkey for this site).
+// ponytail: no server, so the signature is not verified; like the PIN this is a local gate, not encryption.
+const FACE = '<svg viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M9 9v1.5M15 9v1.5M12 9v4h-1M9 16c1.7 1.3 4.3 1.3 6 0"/></svg>';
+const rand = k => crypto.getRandomValues(new Uint8Array(k));
+let bioOK = false, bioBusy = false;
+window.PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable?.().then(ok => { bioOK = ok; render(); }).catch(() => {});
+async function bioCreate() {
+  const c = await navigator.credentials.create({ publicKey: { challenge: rand(32), rp: { name: 'Kontingent' },
+    user: { id: rand(16), name: 'Kontingent', displayName: 'Kontingent' },
+    pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+    authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' }, timeout: 60000 } });
+  return btoa(String.fromCharCode(...new Uint8Array(c.rawId)));
+}
+async function tryBio() {
+  if (!S.bioId || pinMode !== 'unlock' || bioBusy) return;
+  bioBusy = true;
+  try {
+    const a = await navigator.credentials.get({ publicKey: { challenge: rand(32), userVerification: 'required', timeout: 60000,
+      allowCredentials: [{ type: 'public-key', id: Uint8Array.from(atob(S.bioId), c => c.charCodeAt(0)) }] } });
+    if (new Uint8Array(a.response.authenticatorData)[32] & 4) closeLock(); // UV flag: face, finger or device code checked
+  } catch { /* cancelled or not allowed: the PIN pad stays */ }
+  bioBusy = false;
+}
+$('#bioOn').onchange = async e => {
+  e.target.blur();
+  if (e.target.checked) {
+    try { S.bioId = await bioCreate(); } catch { alert('Face ID / Touch ID konnte nicht eingerichtet werden.'); }
+  } else S.bioId = '';
+  save();
+};
 
 function openLock(mode, title) {
+  if (mode === 'unlock' && pinMode !== 'unlock') pinFailed = false;
   pinMode = mode; pinBuf = '';
   $('#lock').hidden = false;
   $('#lockTitle').textContent = title || { unlock: 'PIN eingeben', set: 'Neue PIN wählen', confirm: 'PIN bestätigen' }[mode];
-  $('#lockAlt').textContent = mode === 'unlock' ? 'Vergessen' : 'Abbrechen';
+  lockAlt();
   dots();
+}
+// bottom-left key: Face ID while it is set up, "Vergessen" after a wrong PIN, "Abbrechen" while choosing a PIN
+const bioKey = () => pinMode === 'unlock' && S.bioId && !pinFailed;
+function lockAlt() {
+  $('#lockAlt').innerHTML = pinMode !== 'unlock' ? 'Abbrechen' : bioKey() ? FACE : 'Vergessen';
+  $('#lockAlt').setAttribute('aria-label', bioKey() ? 'Mit Face ID oder Touch ID entsperren' : $('#lockAlt').textContent);
 }
 function closeLock() { pinMode = null; $('#lock').hidden = true; }
 function dots() { $('#dots').innerHTML = [0, 1, 2, 3].map(i => `<span class="${i < pinBuf.length ? 'on' : ''}"></span>`).join(''); }
@@ -801,6 +927,7 @@ $('#pad').onclick = async e => {
   if (!b) return;
   if (b.id === 'lockAlt') {
     if (pinMode !== 'unlock') return closeLock();
+    if (bioKey()) return tryBio();
     if (confirm('Ohne PIN kommst du nicht an deine Daten. Alle Daten löschen und neu beginnen?')) { localStorage.removeItem(KEY); location.reload(); }
     return;
   }
@@ -809,7 +936,7 @@ $('#pad').onclick = async e => {
   dots();
   if (pinBuf.length < 4) return;
   const h = await hash(pinBuf);
-  if (pinMode === 'unlock') h === S.pin ? closeLock() : fail('Falsche PIN');
+  if (pinMode === 'unlock') h === S.pin ? closeLock() : (pinFailed = true, lockAlt(), fail('Falsche PIN'));
   else if (pinMode === 'set') { pinFirst = h; openLock('confirm'); }
   else if (h === pinFirst) { S.pin = h; save(); closeLock(); }
   else { openLock('set', 'PINs stimmen nicht überein'); fail(); }
@@ -821,7 +948,7 @@ function fail(msg) {
 }
 function togglePin() {
   if (!S.pin) return openLock('set');
-  if (confirm('PIN-Sperre entfernen?')) { S.pin = ''; save(); }
+  if (confirm('PIN-Sperre entfernen?')) { S.pin = S.bioId = ''; save(); }
 }
 
 // Lock when the app goes to the background, so the app switcher shows nothing; refresh "today" on return.
@@ -829,7 +956,9 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     hideToast();
     if (S.pin && pinMode !== 'set' && pinMode !== 'confirm') { $$('dialog[open]').forEach(d => d.close()); openLock('unlock'); }
-  } else if (shownDay !== today()) {
+  } else {
+    tryBio();
+    if (shownDay === today()) return;
     shownDay = today();
     month = today().slice(0, 7);
     render();
@@ -838,7 +967,7 @@ document.addEventListener('visibilitychange', () => {
 
 render();
 fillAmount();
-if (S.pin) openLock('unlock');
+if (S.pin) { openLock('unlock'); tryBio(); }
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
