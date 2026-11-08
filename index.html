@@ -25,6 +25,7 @@
             --chart-top: #75f2a4; --chart-bottom: #1fb9a1; --chart: #4ad9a1; --on-chart: #000; }
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { scroll-padding-bottom: calc(76px + env(safe-area-inset-bottom)); } /* keep focused fields clear of the tab bar */
   body { margin: 0 auto; max-width: 560px; background: var(--bg); color: var(--text);
          font: 17px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
          font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
@@ -94,7 +95,7 @@
   .chips button { flex: 1; padding: 12px 0; border-radius: 10px; background: var(--bg); color: var(--text); font-size: 15px; }
   .seg { display: flex; padding: 3px; margin-bottom: 10px; border-radius: 10px; background: var(--bg); }
   .seg button { flex: 1; padding: 12px 0; border-radius: 8px; color: var(--text); font-size: 15px; }
-  .seg[hidden] { display: none; }
+  .seg[hidden], .line[hidden] { display: none; }
   .seg button.on { background: var(--raised); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
 
   .item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
@@ -401,7 +402,7 @@ const $$ = q => document.querySelectorAll(q);
 let S = JSON.parse(localStorage.getItem(KEY) || 'null') || {};
 S = { strains: [], logs: [], until: '', breaks: [], pin: '', form: 'Joint', forms: Object.keys(FORMS), off: [], ...S };
 const on = feature => !S.off.includes(feature); // optional parts of the app: streak, costs, rating
-const FEATURES = [['streak', 'Konsumfrei-Zähler', 'Zähler, Rekord und Pausenziel'], ['costs', 'Kosten', 'Preise, Ausgaben und Ersparnis'], ['rating', 'Bewertung', 'Sterne für Sorten']];
+const FEATURES = [['streak', 'Konsumfrei-Zähler', 'Zähler und Rekord'], ['goals', 'Ziele', 'Pausenziel und nächster Meilenstein'], ['costs', 'Kosten', 'Preise, Ausgaben und Ersparnis'], ['rating', 'Bewertung', 'Sterne für Sorten']];
 const WEEKDAYS = ['montags', 'dienstags', 'mittwochs', 'donnerstags', 'freitags', 'samstags', 'sonntags'];
 const TOD = ['Morgens', 'Mittags', 'Abends', 'Nachts'];
 S.amounts = { Joint: 0.3, Bong: 0.1, Vaporizer: 0.15, Edible: 0.1, ...S.amounts }; // grams per unit
@@ -492,7 +493,7 @@ function render() {
   const stock = S.strains.reduce((a, s) => a + s.grams, 0);
   const todays = S.logs.filter(l => l.date === t);
   const todayG = sum(todays);
-  const pause = on('streak') ? S.pause : null; // the pause goal lives in the streak card
+  const pause = on('streak') && on('goals') ? S.pause : null; // the pause goal lives in the streak card
   const b = budget(stock, todayG, t, until, S.breaks, pause);
   const avg = dailyAvg(S.logs, t);
   const last = daysSinceLast(marks(), t);
@@ -592,9 +593,11 @@ function render() {
   // Einstellungen
   $('#formPick').innerHTML = Object.keys(FORMS).map(f =>
     `<button class="${S.forms.includes(f) ? 'on' : ''}" aria-pressed="${S.forms.includes(f)}" data-pf="${f}">${f}</button>`).join('');
-  if (!$('#features').contains(document.activeElement))
+  if (!$('#features').children.length) // built once, so a switch is never replaced while it is being toggled
     $('#features').innerHTML = FEATURES.map(([k, label, sub], i) => `<label class="line${i ? '' : ' first'}">
-      <span>${label}<span class="sub">${sub}</span></span><input type="checkbox" class="switch" data-feat="${k}"${on(k) ? ' checked' : ''}></label>`).join('');
+      <span>${label}<span class="sub">${sub}</span></span><input type="checkbox" class="switch" data-feat="${k}"></label>`).join('');
+  $$('#features [data-feat]').forEach(x => x.checked = on(x.dataset.feat));
+  $('#features [data-feat=goals]').parentElement.hidden = !on('streak'); // goals live in the counter
   $('#backupInfo').textContent = S.lastBackup ? `Letztes Backup: ${day(S.lastBackup, { day: 'numeric', month: 'long' })}.` : 'Noch kein Backup.';
   $('#bioRow').hidden = !(S.pin && bioOK);
   $('#bioOn').checked = !!S.bioId;
@@ -634,11 +637,11 @@ function span(d) {
 }
 
 function renderStreak(t, last) {
-  const best = longestBreak(marks(), t), P = S.pause;
+  const goals = on('goals'), best = longestBreak(marks(), t), P = goals ? S.pause : null;
   const manual = !S.logs.some(l => l.date > (S.cleanSince || '')); // no entry yet that replaces the set start
-  const btn = `<div class="actions">${P && t < P.end
+  const btn = goals || manual ? `<div class="actions">${!goals ? '' : P && t < P.end
     ? '<button class="danger" onclick="endPause()">Pausenziel beenden</button>'
-    : `<button onclick="setPause()">${P ? 'Neues Pausenziel' : 'Pausenziel setzen'}</button>`}${manual ? '<button onclick="setCleanSince()">Anpassen</button>' : ''}</div>`;
+    : `<button onclick="setPause()">${P ? 'Neues Pausenziel' : 'Pausenziel setzen'}</button>`}${manual ? '<button onclick="setCleanSince()">Anpassen</button>' : ''}</div>` : '';
   if (last === null && !P) { $('#streak').innerHTML = '<p class="empty">Der Zähler startet mit deinem ersten Eintrag. Schon länger konsumfrei? Trag ein, seit wann.</p><div class="actions"><button onclick="setCleanSince()">Konsumfreie Tage eintragen</button></div>'; return; }
   const lastDate = last ? addDays(t, -last) : null, before = lastDate && dailyAvg(S.logs, lastDate); // spending before the break
   const saved = on('costs') && before && before.cost * last >= 0.5 ? before.cost * last : 0;
@@ -662,9 +665,9 @@ function renderStreak(t, last) {
       <div class="foot"><span>Rekord</span><span>${tage(best)}</span></div>${btn}`;
   } else {
     const [goal, label] = nextMilestone(last), prev = MILESTONES.filter(([d]) => d <= last).pop()?.[0] || 0;
-    $('#streak').innerHTML = ring((last - prev) / (goal - prev), last, `${last === 1 ? 'Tag' : 'Tage'} konsumfrei`)
+    $('#streak').innerHTML = ring(goals ? (last - prev) / (goal - prev) : 1, last, `${last === 1 ? 'Tag' : 'Tage'} konsumfrei`)
       + `<div class="ring-cap">${P ? '<span class="accent">Pausenziel erreicht</span> · ' : ''}seit ${longDay(addDays(lastDate, 1))}${last >= 7 ? `<br>Das sind ${span(last)}.` : ''}</div>`
-      + stats([['Ziel', label], recordCell, ...savedCell]) + btn;
+      + stats([...(goals ? [['Ziel', label]] : []), recordCell, ...savedCell]) + btn;
   }
 }
 
@@ -856,7 +859,7 @@ function logUse() {
   if (!s) return;
   if (!(x > 0)) return alert('Bitte eine Menge in Gramm angeben.');
   if (x > s.grams + 1e-9) return alert(`Im Bestand sind nur noch ${g(s.grams)} ${s.name}.`);
-  const date = today(), endsPause = S.pause && date >= S.pause.start && date < S.pause.end;
+  const date = today(), endsPause = on('goals') && S.pause && date >= S.pause.start && date < S.pause.end;
   withUndo(`${g(x)} erfasst${endsPause ? ' · Pausenziel beendet' : ''}`, () => {
     s.grams = r3(s.grams - x);
     S.logs.push({ id: Date.now(), strainId: s.id, name: s.name, thc: s.thc, price: s.price || 0, form: S.form, grams: x, date });
