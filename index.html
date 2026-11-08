@@ -486,7 +486,7 @@ function render() {
   const pause = on('streak') ? S.pause : null; // the pause goal lives in the streak card
   const b = budget(stock, todayG, t, until, S.breaks, pause);
   const avg = dailyAvg(S.logs, t);
-  const last = daysSinceLast(S.logs, t);
+  const last = daysSinceLast(marks(), t);
   const lim = planLimit(S.plan, t), planned = b && lim !== null && lim < b.perDay;
   const perDay = b ? (planned ? lim : b.perDay) : 0, left = b ? (b.isBreak ? 0 : perDay) - todayG : 0;
   const inPause = pause && t >= pause.start && t < pause.end;
@@ -539,7 +539,7 @@ function render() {
   $('#todayBlock').hidden = !todays.length;
   $('#todayLogs').innerHTML = [...todays].reverse()
     .map(l => logRow(l, new Date(l.id).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }))).join('');
-  $('#streakBlock').hidden = !on('streak') || (last === null && !S.pause);
+  $('#streakBlock').hidden = !on('streak');
   renderStreak(t, last);
 
   // Bestand: used-up strains last and dimmed (kept for their rating)
@@ -607,12 +607,16 @@ function render() {
   $('#pinBtn').classList.toggle('danger', !!S.pin);
 }
 
+// Consumption days for the streak: the logs plus the last day before the app, if set (S.cleanSince).
+const marks = () => S.cleanSince ? [...S.logs, { date: S.cleanSince, grams: 0 }] : S.logs;
+
 function renderStreak(t, last) {
-  const best = longestBreak(S.logs, t), P = S.pause;
+  const best = longestBreak(marks(), t), P = S.pause;
+  const manual = !S.logs.some(l => l.date > (S.cleanSince || '')); // no entry yet that replaces the set start
   const btn = `<div class="actions">${P && t < P.end
     ? '<button class="danger" onclick="endPause()">Pausenziel beenden</button>'
-    : `<button onclick="setPause()">${P ? 'Neues Pausenziel' : 'Pausenziel setzen'}</button>`}</div>`;
-  if (last === null && !P) { $('#streak').innerHTML = '<p class="empty">Der Zähler startet mit deinem ersten Eintrag.</p>'; return; }
+    : `<button onclick="setPause()">${P ? 'Neues Pausenziel' : 'Pausenziel setzen'}</button>`}${manual ? '<button onclick="setCleanSince()">Anpassen</button>' : ''}</div>`;
+  if (last === null && !P) { $('#streak').innerHTML = '<p class="empty">Der Zähler startet mit deinem ersten Eintrag. Schon länger konsumfrei? Trag ein, seit wann.</p><div class="actions"><button onclick="setCleanSince()">Konsumfreie Tage eintragen</button></div>'; return; }
   const lastDate = last ? addDays(t, -last) : null, before = lastDate && dailyAvg(S.logs, lastDate); // spending before the break
   const saved = on('costs') && before && before.cost * last >= 0.5 ? ` · ca. ${eur(before.cost * last)} gespart` : '';
   const longDay = d => day(d, { weekday: 'long', day: 'numeric', month: 'long' });
@@ -647,10 +651,19 @@ function setPause() {
     <p class="hint" style="margin:0 2px 14px">Bereits konsumfreie Tage zählen mit. Während der Pause ist dein Budget 0 g.</p>`, () => {
     const d = parseInt($('#eDays').value, 10);
     if (!(d > 0)) return alert('Bitte eine Anzahl Tage wählen.'), false;
-    const t = today(), last = daysSinceLast(S.logs, t), start = last === null ? t : last === 0 ? addDays(t, 1) : addDays(t, 1 - last);
+    const t = today(), last = daysSinceLast(marks(), t), start = last === null ? t : last === 0 ? addDays(t, 1) : addDays(t, 1 - last);
     withUndo(`Pausenziel: ${tage(d)}`, () => S.pause = { start, end: addDays(start, d), days: d });
   }, null, 'Starten');
   $('#editBody').onclick = e => { const b = e.target.closest('[data-days]'); if (b) { $('#eDays').value = b.dataset.days; pick('#eDaysPick', 'data-days')(e); } };
+}
+function setCleanSince() {
+  const t = today(), cur = S.cleanSince ? daysBetween(S.cleanSince, t) : '';
+  openEdit('Konsumfrei seit', `<label class="field"><span>Tage ohne Konsum</span><input id="eClean" inputmode="numeric" placeholder="z. B. 14" value="${cur}"></label>
+    <p class="hint" style="margin:0 2px 14px">Für die Zeit, bevor du die App genutzt hast. Dein nächster Eintrag setzt den Zähler wie gewohnt zurück.</p>`, () => {
+    const d = parseInt($('#eClean').value, 10);
+    if (!(d > 0)) return alert('Bitte eine Anzahl Tage eingeben.'), false;
+    withUndo(`Konsumfrei seit ${tage(d)}`, () => S.cleanSince = addDays(t, -d));
+  }, S.cleanSince && (() => withUndo('Startdatum entfernt', () => delete S.cleanSince)), 'Speichern', true);
 }
 function endPause() { withUndo('Pausenziel beendet', () => S.pause = null); }
 
