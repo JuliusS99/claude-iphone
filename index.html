@@ -17,6 +17,8 @@
     --accent: #0b7a5e; --on-accent: #fff; --track: #e6eeeb; --danger: #c4372f;
     /* data colours, from the ring of the app icon (darkened for contrast on white) */
     --chart-top: #16a06e; --chart-bottom: #12937d; --chart: #139a76; --on-chart: #fff;
+    /* motion: one ease-out for the interface; the count-up curve where a number counts along (ring, budget) */
+    --ease: cubic-bezier(.2,.8,.2,1); --count: cubic-bezier(.33,1,.68,1);
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
@@ -25,6 +27,8 @@
             --chart-top: #75f2a4; --chart-bottom: #1fb9a1; --chart: #4ad9a1; --on-chart: #000; }
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { touch-action: manipulation; } /* fast repeated taps (PIN, buttons) never zoom */
+  button, nav, summary, .tap, .pad { -webkit-user-select: none; user-select: none; } /* a long press does not select text */
   html { font-size: 1rem; font: -apple-system-body; scroll-padding-bottom: calc(76px + env(safe-area-inset-bottom)); } /* keep focused fields clear of the tab bar */
   body { margin: 0 auto; max-width: 560px; background: var(--bg); color: var(--text);
          font: 1rem/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
@@ -47,7 +51,8 @@
   .accent { color: var(--accent); }
   #streakBlock.top h2 { margin-top: 4px; }
   .ms-hit { text-align: center; color: var(--accent); font-weight: 600; font-size: 0.882rem; margin-bottom: 4px; }
-  .ms-list summary { font-size: 0.824rem; color: var(--muted); padding: 12px 0; min-height: 20px; cursor: pointer; list-style-position: inside; }
+  .ms-list summary { display: flex; justify-content: space-between; align-items: center; font-size: 0.824rem; color: var(--muted); padding: 12px 0; min-height: 20px; cursor: pointer; list-style: none; }
+  .ms-list summary::-webkit-details-marker { display: none; }
   .ms-list div { display: flex; justify-content: space-between; font-size: 0.824rem; padding: 6px 0; border-top: 1px solid var(--line); }
   .ms-list span:last-child { color: var(--muted); }
   .ring { position: relative; width: 10.8rem; margin: 8px auto 0; }
@@ -94,14 +99,17 @@
   button:disabled { opacity: .3; cursor: default; }
   .primary { width: 100%; padding: 14px; border-radius: 12px; background: var(--accent); color: var(--on-accent); font-weight: 600; }
   .secondary { width: 100%; padding: 14px; border-radius: 12px; background: var(--bg); color: var(--text); font-weight: 600; }
-  .primary:active, .secondary:active, .chips button:active, .seg button:active { opacity: .7; }
 
   .chips { display: flex; gap: 8px; margin-bottom: 10px; }
   .chips button { flex: 1; padding: 12px 0; border-radius: 10px; background: var(--bg); color: var(--text); font-size: 0.882rem; }
-  .seg { display: flex; padding: 3px; margin-bottom: 10px; border-radius: 10px; background: var(--bg); }
-  .seg button { flex: 1; padding: 12px 0; border-radius: 8px; color: var(--text); font-size: 0.882rem; }
+  .seg { position: relative; display: flex; padding: 3px; margin-bottom: 10px; border-radius: 10px; background: var(--bg); }
+  .seg button { position: relative; flex: 1; padding: 12px 0; border-radius: 8px; color: var(--text); font-size: 0.882rem; }
   .seg[hidden], .line[hidden], .addrow[hidden] { display: none; }
-  .seg button.on { background: var(--raised); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .seg button.on { font-weight: 600; }
+  /* the selection is one thumb that slides to the tapped segment (--i of --n, set by the script) */
+  .seg::before { content: ''; position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc((100% - 6px) / var(--n, 1));
+                 transform: translateX(calc(100% * var(--i, 0))); border-radius: 8px; background: var(--raised);
+                 box-shadow: 0 1px 3px rgba(0,0,0,.12); transition: transform .32s var(--ease); }
 
   .item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
   .item:first-child { border-top: 0; padding-top: 0; } .item:last-child { padding-bottom: 0; }
@@ -151,8 +159,8 @@
   .dayg summary { display: flex; align-items: center; gap: 10px; min-height: 52px; list-style: none; cursor: pointer; }
   .dayg summary::-webkit-details-marker { display: none; }
   .dayg summary > span:first-child { flex: 1; font-weight: 500; white-space: nowrap; }
-  .dayg summary::after, .used summary::after { content: ''; width: 7px; height: 7px; margin: 0 4px 3px 2px; border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform .2s; }
-  .dayg[open] summary::after, .used[open] summary::after { transform: rotate(-135deg); margin-bottom: -3px; }
+  .dayg summary::after, .used summary::after, .ms-list summary::after { content: ''; width: 7px; height: 7px; margin: 0 4px 3px 2px; border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform .3s var(--ease), margin .3s var(--ease); }
+  :is(.dayg, .used, .ms-list)[open]:not([data-closing]) summary::after { transform: rotate(-135deg); margin-bottom: -3px; }
   .dayg .item:first-child { border-top: 1px solid var(--line); padding-top: 12px; }
   .dayg[open] { padding-bottom: 12px; }
   .more { width: 100%; min-height: 48px; font-weight: 500; }
@@ -169,10 +177,11 @@
   .mini-stars .on { fill: var(--accent); stroke: var(--accent); }
   .strain .right { display: flex; flex-direction: column; align-items: flex-end; }
   .strain .right button { min-height: 44px; margin: -8px 0 -14px; padding-left: 16px; font-size: .882rem; }
-  .used summary { min-height: 48px; display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: .882rem; cursor: pointer; border-top: 1px solid var(--line); margin: 12px 0 -12px; list-style: none; }
+  .used summary { min-height: 48px; display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: .882rem; cursor: pointer; border-top: 1px solid var(--line); list-style: none; }
   .used summary::-webkit-details-marker { display: none; }
-  .used[open] summary { margin-bottom: 0; }
-  .used:first-child summary { border-top: 0; margin-top: -12px; }
+  /* spacing on the fold itself, not on its summary, so opening and closing can animate its height */
+  .used { margin: 12px 0 -12px; } .used[open] { padding-bottom: 12px; }
+  .used:first-child { margin-top: -12px; } .used:first-child summary { border-top: 0; }
   .used .item:first-child { border-top: 1px solid var(--line); padding-top: 12px; }
   .used .grow, .used .amount { opacity: .5; }
   .streak-mini { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: .882rem; }
@@ -180,17 +189,19 @@
   #amounts .line > span:first-child { flex: 1; }
   #amounts .line.off .amt { opacity: .35; }
   /* motion: short, ease-out, off with "Bewegung reduzieren" */
-  .meter > div { transition: width .6s cubic-bezier(.2,.8,.2,1); }
+  .meter > div { transition: width .6s var(--count); } /* in step with the budget counting down */
   .bar { transform-origin: bottom; } .hbar > div > div { transform-origin: left; }
-  .primary, .secondary, .chips button, .seg button, .days button, .addrow, button.cal-d, .tap { transition: transform .15s, opacity .15s; }
-  .primary:active, .secondary:active, .chips button:active, .seg button:active, .days button:active, .addrow:active, button.cal-d:active { transform: scale(.96); }
-  .addrow:active { opacity: .7; }
-  dialog[open] { animation: sheet-in .34s cubic-bezier(.2,.8,.2,1); }
-  dialog[open]::backdrop { animation: fade-in .34s; }
-  dialog.out { animation: sheet-out .2s ease-in forwards; }
-  dialog.out::backdrop { animation: fade-out .2s forwards; }
-  @keyframes sheet-in { from { opacity: 0; transform: translateY(56px); } }
-  @keyframes sheet-out { to { opacity: 0; transform: translateY(56px); } }
+  /* tap feedback: buttons, rows and folds dim; large controls also shrink a little, quick in and slower out */
+  :where(button, summary, .tap, .date-stat) { transition: opacity .2s, transform .3s var(--ease); }
+  :where(button, summary, .tap, .date-stat):active { opacity: .6; }
+  :is(.primary, .secondary, .chips button, .days button, .addrow, button.cal-d):active { opacity: .85; transform: scale(.97); transition-duration: .1s; }
+  /* dialogs rise in and fade out, quicker out than in */
+  dialog[open] { animation: dlg-in .3s var(--ease); }
+  dialog[open]::backdrop { animation: fade-in .3s var(--ease); }
+  dialog.out { animation: dlg-out .18s var(--ease) forwards; }
+  dialog.out::backdrop { animation: fade-out .18s var(--ease) forwards; }
+  @keyframes dlg-in { from { opacity: 0; transform: translateY(12px) scale(.97); } }
+  @keyframes dlg-out { to { opacity: 0; transform: scale(.98); } }
   @keyframes fade-in { from { opacity: 0; } }
   @keyframes fade-out { to { opacity: 0; } }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after, ::backdrop { animation: none !important; transition: none !important; } }
@@ -216,10 +227,12 @@
   #dots { display: flex; gap: 20px; }
   #dots span { width: 13px; height: 13px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--text); }
   #dots span.on { background: var(--text); }
-  #dots.shake { animation: shake .35s; }
-  @keyframes shake { 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
-  .tap { cursor: pointer; } .tap:active { opacity: .6; }
+  #dots.shake { animation: shake .4s; } /* dies down, like the iOS passcode shake */
+  @keyframes shake { 15% { transform: translateX(-12px); } 35% { transform: translateX(9px); } 55% { transform: translateX(-6px); } 75% { transform: translateX(3px); } }
+  .tap { cursor: pointer; }
   .warn { color: var(--danger); }
+  .err { color: var(--danger); font-size: 0.824rem; margin: 0 2px 12px; }
+  input[aria-invalid=true], textarea[aria-invalid=true] { outline: 2px solid var(--danger); outline-offset: -1px; border-color: transparent; }
   .chips button.on { background: var(--accent); color: var(--on-accent); font-weight: 600; }
   .row.rev { flex-direction: row-reverse; }
   .field { display: block; }
@@ -234,21 +247,23 @@
   .addrow { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 52px; font-weight: 500; text-align: left; }
   .addrow svg { width: 20px; height: 20px; }
   input.switch { -webkit-appearance: none; appearance: none; flex: none; position: relative; width: 51px; height: 31px; min-height: 0;
-            margin: 0; padding: 0; border: 0; border-radius: 16px; background: var(--track); transition: background .2s; }
-  input.switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%;
-                   background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,.2); transition: transform .2s; }
+            margin: 0; padding: 0; border: 0; border-radius: 16px; background: var(--track); transition: background-color .25s var(--ease); }
+  input.switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 14px;
+                   background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,.2); transition: transform .3s var(--ease), width .3s var(--ease); }
   input.switch:checked { background: var(--accent); }
   input.switch:checked::after { transform: translateX(20px); }
+  input.switch:active::after { width: 33px; } /* like iOS, the knob stretches while it is held */
+  input.switch:checked:active::after { transform: translateX(14px); }
   input.switch:focus { outline: none; }
   #toast { position: fixed; left: 16px; right: 16px; bottom: calc(env(safe-area-inset-bottom) + 72px); z-index: 20;
            max-width: 528px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 12px;
            padding: 14px 16px; border-radius: 12px; background: #2c2c2e; color: #fff; font-size: 0.882rem;
-           box-shadow: 0 8px 24px rgba(0,0,0,.25); transition: opacity .2s, transform .2s; }
+           box-shadow: 0 8px 24px rgba(0,0,0,.25); transition: opacity .25s var(--ease), transform .3s var(--ease); }
   #toast[hidden] { display: flex; opacity: 0; transform: translateY(12px); pointer-events: none; }
-  #toast button { color: #75f2a4; font-weight: 600; flex: none; }
+  #toast button { color: #75f2a4; font-weight: 600; flex: none; padding: 14px 16px; margin: -14px -16px; } /* the whole end of the toast is the button */
   .pad { display: grid; grid-template-columns: repeat(3, 76px); gap: 16px 24px; }
-  .pad button { height: 76px; border-radius: 50%; background: var(--card); color: var(--text); font-size: 30px; font-weight: 300; }
-  .pad button:active { background: var(--raised); opacity: .7; }
+  .pad button { height: 76px; border-radius: 50%; background: var(--card); color: var(--text); font-size: 30px; font-weight: 300; transition: background-color .35s, opacity .35s; }
+  .pad button:active { background: var(--raised); opacity: .7; transition: none; } /* lights up at once, fades out */
   .pad .plain { background: none; font-size: 15px; font-weight: 500; }
   .pad svg { width: 26px; height: 26px; stroke-width: 1.7; }
   @media (max-height: 520px) { /* landscape phone: keypad must fit */
@@ -292,6 +307,7 @@
         <label class="unit"><input id="use" inputmode="decimal" placeholder="Menge" aria-label="Menge in Gramm"><span>g</span></label>
         <button class="primary" onclick="logUse()">Erfassen</button>
       </div>
+      <p id="logErr" class="err" role="alert" hidden style="margin:10px 2px 0"></p>
     </div>
     <div id="logEmpty" hidden>
       <p id="logEmptyText" style="margin:0 0 14px"></p>
@@ -391,7 +407,7 @@
   </div>
 
   <h2>Reduktionsplan</h2>
-  <div class="card" id="plan"></div>
+  <div class="card" id="plan"><label class="line first"><span>Aktiv</span><input type="checkbox" class="switch" id="planOn"></label><div id="planFields"></div></div>
   <p class="hint" id="planNote"></p>
 
   <h2>Sichtschutz</h2>
@@ -417,10 +433,11 @@
   <button data-go="einstellungen"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>Einstellungen</button>
 </nav>
 
-<dialog id="edit">
+<dialog id="edit" aria-labelledby="editTitle">
   <form method="dialog" id="editForm">
     <div class="dlg-title" id="editTitle" tabindex="-1"></div>
     <div id="editBody"></div>
+    <p id="editErr" class="err" role="alert" hidden></p>
     <!-- ok first in the DOM so the keyboard's return key saves; shown on the right -->
     <div class="row rev"><button value="ok" class="primary" id="editOk"></button><button value="cancel" class="secondary">Abbrechen</button></div>
     <button value="del" class="danger" id="editDel" style="width:100%;margin-top:8px;padding:12px">Löschen</button>
@@ -485,11 +502,11 @@ function save() { localStorage.setItem(KEY, JSON.stringify(S)); hideToast(); ren
 
 // Motion. Everything is skipped with "Bewegung reduzieren" (Bedienungshilfen).
 const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-const EASE = 'cubic-bezier(.2,.8,.2,1)', REVEAL = [{ opacity: 0, transform: 'translateY(-6px)' }, {}];
+const EASE = 'cubic-bezier(.2,.8,.2,1)', COUNT = 'cubic-bezier(.33,1,.68,1)', REVEAL = [{ opacity: 0, transform: 'translateY(-6px)' }, {}];
 const anim = (el, frames, o) => el && !calm() && el.animate(frames, { easing: EASE, fill: 'backwards', ...(typeof o === 'number' ? { duration: o } : o) });
 const cssVar = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
-// counts a number shown in el from `from` to `to`
-function tween(el, from, to, fmt, ms = 700) {
+// counts a number shown in el from `from` to `to`, ease-out cubic (the COUNT curve)
+function tween(el, from, to, fmt, ms = 600) {
   cancelAnimationFrame(el._raf);
   if (calm() || from === to) return el.textContent = fmt(to);
   const t0 = performance.now();
@@ -497,22 +514,36 @@ function tween(el, from, to, fmt, ms = 700) {
     if (k < 1 && el.isConnected) el._raf = requestAnimationFrame(step); };
   step(t0);
 }
-// the ring fills and the number counts up; a milestone reached today glows once and the gradient sweeps around
+// runs fn now if el is on screen, else once it is scrolled into view, so nothing plays where it cannot be seen
+function whenSeen(el, fn) {
+  if (!el || calm()) return;
+  el._io?.disconnect();
+  const r = el.getBoundingClientRect();
+  if (r.bottom > 0 && r.top < innerHeight) return fn();
+  el._io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { el._io.disconnect(); fn(); } });
+  el._io.observe(el);
+}
+// the ring fills while the number counts up on the same curve; a milestone reached today glows once and the gradient sweeps around
 function playRing() {
   const rg = $('#streak .ring');
-  if (!rg || calm() || $('section[data-tab=heute]').hidden) return;
-  anim(rg.querySelector('.ring-val'), [{ strokeDashoffset: RING + 'px' }, {}], 1000);
-  const num = rg.querySelector('.ring-num');
-  tween(num, 0, +num.textContent, Math.round, 1000);
-  if (!$('#streak .ms-hit')) return;
-  const glow = `drop-shadow(0 0 12px ${cssVar('--chart-top')})`, none = 'drop-shadow(0 0 0 transparent)';
-  rg.querySelector('animateTransform').beginElementAt(.9);
-  anim(rg.querySelector('svg'), [{ filter: none }, { filter: glow }, { filter: none }], { duration: 1400, delay: 900, easing: 'ease-in-out' });
-  anim($('#streak .ms-hit'), [{ opacity: 0, transform: 'translateY(6px)' }, {}], { duration: 500, delay: 900 });
+  if (!rg || $('section[data-tab=heute]').hidden) return;
+  whenSeen(rg, () => {
+    const num = rg.querySelector('.ring-num'), hit = $('#streak .ms-hit');
+    anim(rg.querySelector('.ring-val'), [{ strokeDashoffset: RING + 'px' }, {}], { duration: 1000, easing: COUNT });
+    tween(num, 0, +num.dataset.n, Math.round, 1000); // data-n: the text may be mid-count
+    if (!hit) return;
+    const glow = `drop-shadow(0 0 12px ${cssVar('--chart-top')})`, none = 'drop-shadow(0 0 0 transparent)';
+    rg.querySelector('animateTransform').beginElementAt(.9);
+    anim(rg.querySelector('svg'), [{ filter: none }, { filter: glow }, { filter: none }], { duration: 1400, delay: 900, easing: 'ease-in-out' });
+    anim(hit, [{ opacity: 0, transform: 'translateY(6px)' }, {}], { duration: 500, delay: 900 });
+  });
 }
+// bars grow from the baseline, each chart when it comes into view
 function growBars() {
-  $$('#chart .bar, #patterns .bar').forEach((b, i) => anim(b, [{ transform: 'scaleY(0)' }, {}], { duration: 600, delay: i % 7 * 40 }));
-  $$('#patterns .hbar > div > div').forEach((b, i) => anim(b, [{ transform: 'scaleX(0)' }, {}], { duration: 600, delay: i * 50 }));
+  for (const box of [$('#chart'), $('#patterns')]) whenSeen(box, () => {
+    box.querySelectorAll('.bar').forEach((b, i) => anim(b, [{ transform: 'scaleY(0)' }, {}], { duration: 600, delay: i * 40 }));
+    box.querySelectorAll('.hbar > div > div').forEach((b, i) => anim(b, [{ transform: 'scaleX(0)' }, {}], { duration: 600, delay: i * 50 }));
+  });
 }
 // a removed row folds away before the list is redrawn
 function collapse(el, then) {
@@ -520,7 +551,8 @@ function collapse(el, then) {
   el.dataset.leaving = 1;
   if (calm()) return then();
   el.style.overflow = 'hidden';
-  el.animate([{ height: el.offsetHeight + 'px' }, { height: 0, paddingTop: 0, paddingBottom: 0, opacity: 0, borderTopColor: 'transparent' }], { duration: 220, easing: EASE, fill: 'forwards' }).onfinish = then;
+  const a = el.animate([{ height: el.offsetHeight + 'px' }, { height: 0, paddingTop: 0, paddingBottom: 0, opacity: 0, borderTopColor: 'transparent' }], { duration: 220, easing: EASE, fill: 'forwards' });
+  a.onfinish = () => { then(); a.cancel(); el.style.overflow = ''; delete el.dataset.leaving; }; // a kept element (the today block) comes back normal
 }
 let seen = null; // rows of the last render, so new ones (added, or back via undo) can slide in
 
@@ -552,6 +584,7 @@ function openEdit(title, html, save, del, okLabel = 'Speichern', keyboard = fals
   $('#editTitle').toggleAttribute('autofocus', !keyboard);
   $('#editBody').innerHTML = html;
   $('#editBody').onclick = $('#editBody').oninput = null;
+  $('#editErr').hidden = true;
   $('#editOk').textContent = okLabel;
   $('#editDel').hidden = !del;
   $('#edit').showModal();
@@ -566,20 +599,35 @@ $('#editForm').onsubmit = e => {
   if (calm()) return;
   e.preventDefault();
   d.classList.add('out');
-  setTimeout(() => { d.classList.remove('out'); d.close(v); }, 200);
+  setTimeout(() => { d.classList.remove('out'); d.close(v); }, 180);
 };
 // segmented control / star picker inside the dialog
 const pick = (sel, attr) => e => {
   const b = e.target.closest(`[${attr}]`);
-  if (b) $$(`#editBody ${sel} [${attr}]`).forEach(x => x.classList.toggle('on', attr === 'data-star' ? +x.dataset.star <= +b.dataset.star : x === b));
+  if (!b) return;
+  $$(`#editBody ${sel} [${attr}]`).forEach(x => x.classList.toggle('on', attr === 'data-star' ? +x.dataset.star <= +b.dataset.star : x === b));
+  b.parentElement.style.setProperty('--i', [...b.parentElement.children].indexOf(b)); // segmented control: the thumb follows
 };
+// invalid input: the message appears under the fields and the cursor goes to the field, instead of an alert
+function bad(sel, msg, box = '#editErr') {
+  $(box).textContent = msg; $(box).hidden = false;
+  $(sel).setAttribute('aria-invalid', true); $(sel).focus();
+  return false;
+}
+const clearBad = box => { $(box).hidden = true; $(box).parentElement.querySelectorAll('[aria-invalid]').forEach(x => x.removeAttribute('aria-invalid')); };
+$('#editForm').oninput = () => clearBad('#editErr');
 
+// each tab keeps its scroll position, like iOS; tapping the open tab scrolls it to the top
+let tabNow = 'heute';
+const tabY = {};
 function show(tab) {
+  if (tab === tabNow) return scrollTo({ top: 0, behavior: calm() ? 'auto' : 'smooth' });
+  tabY[tabNow] = scrollY; tabNow = tab;
   $$('[data-tab]').forEach(s => s.hidden = s.dataset.tab !== tab);
   $$('nav button').forEach(b => b.classList.toggle('on', b.dataset.go === tab));
   $('#title').textContent = TITLES[tab];
   $('#todayLabel').hidden = tab !== 'heute';
-  scrollTo(0, 0);
+  scrollTo(0, tabY[tab] || 0);
   anim($(`[data-tab=${tab}]`), [{ opacity: 0 }, {}], 180);
   if (tab === 'heute') playRing();
   if (tab === 'statistik') growBars();
@@ -651,6 +699,7 @@ function render() {
   $('#logEmptyBtn').onclick = () => S.strains.length ? show('bestand') : addStrain();
   if (!S.forms.includes(S.form)) S.form = S.forms[0];
   $('#forms').hidden = S.forms.length < 2; // one form: nothing to choose
+  $('#forms').style.cssText = `--i:${S.forms.indexOf(S.form)};--n:${S.forms.length}`;
   $('#forms').innerHTML = S.forms.map(f =>
     `<button role="radio" aria-checked="${f === S.form}" class="${f === S.form ? 'on' : ''}" data-f="${f}">${f}</button>`).join('');
   // backup reminder: 7 days after the first entry without any backup, then every 30 days
@@ -733,10 +782,10 @@ function render() {
     if (a !== document.activeElement) a.value = n(S.amounts[f]);
   });
   const P = S.plan;
-  if (!$('#plan').contains(document.activeElement))
-    $('#plan').innerHTML = `<label class="line first"><span>Aktiv</span><input type="checkbox" class="switch" id="planOn"${P?.on ? ' checked' : ''}></label>`
-      + (P?.on ? [['start', 'Start', 'g/Tag'], ['pct', 'Senkung pro Woche', '%'], ['target', 'Ziel', 'g/Tag']].map(([k, label, unit]) =>
-        `<label class="line"><span>${label}</span><span><input inputmode="decimal" data-p="${k}" value="${n(P[k])}" size="4" aria-label="${label}"> ${unit}</span></label>`).join('') : '');
+  $('#planOn').checked = !!P?.on; // the switch stays in place, so it can slide
+  if (!$('#planFields').contains(document.activeElement))
+    $('#planFields').innerHTML = P?.on ? [['start', 'Start', 'g/Tag'], ['pct', 'Senkung pro Woche', '%'], ['target', 'Ziel', 'g/Tag']].map(([k, label, unit]) =>
+      `<label class="line"><span>${label}</span><span><input inputmode="decimal" data-p="${k}" value="${n(P[k])}" size="4" aria-label="${label}"> ${unit}</span></label>`).join('') : '';
   const wt = P?.on ? weeksToTarget(P) : 0;
   $('#planNote').textContent = lim === null ? 'Senkt dein Tageslimit automatisch Woche für Woche bis zu einem Ziel. Gilt zusätzlich zum Bestand-Budget, der kleinere Wert zählt.'
     : `Woche ${Math.floor(daysBetween(P.from, t) / 7) + 1}: höchstens ${g(lim)} pro Tag.`
@@ -760,7 +809,7 @@ const ring = (part, num, unit) => `<div class="ring"><svg viewBox="0 0 160 160" 
   <defs><linearGradient id="ringG" x1="0" y1="1" x2="1" y2="0"><stop offset="0" style="stop-color:var(--chart-bottom)"/><stop offset="1" style="stop-color:var(--chart-top)"/><animateTransform attributeName="gradientTransform" type="rotate" from="0 .5 .5" to="360 .5 .5" dur="1.4s" begin="indefinite"/></linearGradient></defs>
   <circle cx="80" cy="80" r="70" class="ring-track"/>
   ${part > 0 ? `<circle cx="80" cy="80" r="70" class="ring-val" stroke-dasharray="${RING}" stroke-dashoffset="${RING * (1 - Math.min(1, part))}"/>` : ''}
-  </svg><div><div class="ring-num">${num}</div><div class="ring-unit">${unit}</div></div></div>`;
+  </svg><div><div class="ring-num" data-n="${num}">${num}</div><div class="ring-unit">${unit}</div></div></div>`;
 // 16 -> "2 Wochen und 2 Tage", 45 -> "1 Monat und 15 Tage"
 function span(d) {
   const [n, one, many] = d >= 365 ? [Math.floor(d / 365), 'Jahr', 'Jahre'] : d >= 30 ? [Math.floor(d / 30), 'Monat', 'Monate'] : [Math.floor(d / 7), 'Woche', 'Wochen'];
@@ -822,7 +871,7 @@ function setPause() {
     <label class="field"><span>Oder eigene Anzahl Tage</span><input id="eDays" inputmode="numeric" placeholder="z. B. 21"></label>
     <p class="hint" style="margin:0 2px 14px">Bereits konsumfreie Tage zählen mit. Während der Pause ist dein Budget 0 g.</p>`, () => {
     const d = parseInt($('#eDays').value, 10);
-    if (!(d > 0)) return alert('Bitte eine Anzahl Tage wählen.'), false;
+    if (!(d > 0)) return bad('#eDays', 'Bitte eine Anzahl Tage wählen.');
     const t = today(), last = daysSinceLast(marks(), t), start = last === null ? t : last === 0 ? addDays(t, 1) : addDays(t, 1 - last);
     withUndo(`Pausenziel: ${tage(d)}`, () => S.pause = { start, end: addDays(start, d), days: d });
     playRing();
@@ -845,7 +894,7 @@ function setCleanSince() {
     const d = parseInt($('#eClean').value, 10), goal = $('#eGoal').checked;
     const eurIn = $('#eWeekEur'), gIn = $('#eWeekG');
     const weekly = { eur: eurIn ? num(eurIn.value) || 0 : S.weekly?.eur || 0, g: gIn ? num(gIn.value) || 0 : S.weekly?.g || 0 };
-    if (!(d > 0)) return alert('Bitte ein Datum vor heute oder eine Anzahl Tage eingeben.'), false;
+    if (!(d > 0)) return bad('#eClean', 'Bitte ein Datum vor heute oder eine Anzahl Tage eingeben.');
     withUndo(`Konsumfrei: ${tage(d)}`, () => { S.cleanSince = addDays(t, -d); S.opt = S.opt.filter(x => x !== 'pause').concat(goal ? ['pause'] : []); S.weekly = weekly; });
     playRing();
   }, S.cleanSince && (() => withUndo('Startdatum entfernt', () => delete S.cleanSince)), 'Speichern', true);
@@ -905,7 +954,8 @@ function renderPatterns() {
 
 function shiftMonth(k) { const [y, m] = month.split('-').map(Number); month = iso(new Date(y, m - 1 + k, 1)).slice(0, 7); render(); }
 
-const fillAmount = (m = 1) => $('#use').value = n(S.amounts[S.form] * m);
+const fillAmount = (m = 1) => { $('#use').value = n(S.amounts[S.form] * m); clearBad('#logErr'); };
+$('#use').oninput = () => clearBad('#logErr');
 $('#strain').onchange = e => { S.strainId = +e.target.value; save(); };
 $('#chips').onclick = e => { if (e.target.dataset.m) fillAmount(+e.target.dataset.m); };
 $('#forms').onclick = e => { if (e.target.dataset.f) { S.form = e.target.dataset.f; save(); fillAmount(); } };
@@ -943,9 +993,20 @@ $('#stock').onclick = e => {
 };
 $('#stock').addEventListener('toggle', e => usedOpen = e.target.open, true);
 $('#logs').addEventListener('toggle', e => { const d = e.target.dataset.day; if (d) e.target.open ? openDays.add(d) : openDays.delete(d); }, true);
+// folds open and close by animating their height instead of jumping
 document.addEventListener('click', e => {
-  const d = e.target.closest('summary')?.parentElement;
-  if (d && !d.open) [...d.children].forEach(c => c.tagName !== 'SUMMARY' && anim(c, REVEAL, 260));
+  const s = e.target.closest('summary'), d = s?.parentElement;
+  if (!d || calm()) return;
+  e.preventDefault();
+  const open = !d.open || d.hasAttribute('data-closing'), h0 = d.offsetHeight;
+  d.getAnimations().forEach(a => a.cancel());
+  d.open = open; const h1 = d.offsetHeight; d.open = true; // measure the end state; the content stays visible while it moves
+  d.toggleAttribute('data-closing', !open);
+  d.style.overflow = 'hidden';
+  d.animate([{ height: h0 + 'px' }, { height: h1 + 'px' }], { duration: 300, easing: EASE }).onfinish = () => {
+    d.open = open; d.style.overflow = ''; d.removeAttribute('data-closing');
+  };
+  if (open) [...d.children].forEach(c => c !== s && anim(c, REVEAL, 300));
 });
 document.addEventListener('touchstart', () => {}, { passive: true }); // iOS only shows :active with a touch listener
 $('#cal').onclick = e => { const b = e.target.closest('[data-day]'); if (b) { calDay = calDay === b.dataset.day ? null : b.dataset.day; render();
@@ -954,7 +1015,10 @@ $('#todayLogs').onclick = $('#logs').onclick = $('#calDay').onclick = e => {
   const row = e.target.closest('[data-lid]');
   if (!row) return;
   const l = S.logs.find(x => x.id === +row.dataset.lid);
-  e.target.closest('[data-del]') ? collapse(row, () => delLog(l)) : editLog(l);
+  if (!e.target.closest('[data-del]')) return editLog(l);
+  // the last entry of a day, or of today, folds away together with its group
+  const alone = row.parentElement.querySelectorAll('[data-lid]').length === 1;
+  collapse(alone && (row.closest('.dayg') || row.closest('#todayLogs') && $('#todayBlock')) || row, () => delLog(l));
 };
 $('#features').onchange = e => {
   const k = e.target.dataset.feat, list = OPT_IN.includes(k) ? 'opt' : 'off';
@@ -982,7 +1046,8 @@ const priceIn = () => on('costs') ? num($('#ePrice').value) : NaN;
 function addStrain() {
   openEdit('Sorte hinzufügen', strainFields(), () => {
     const name = $('#eName').value.trim(), grams = num($('#eGrams').value), total = priceIn(), id = Date.now();
-    if (!name || !(grams > 0)) return alert('Bitte Name und Menge in Gramm angeben.'), false;
+    if (!name) return bad('#eName', 'Bitte einen Namen angeben.');
+    if (!(grams > 0)) return bad('#eGrams', 'Bitte die Menge in Gramm angeben.');
     withUndo(`${name} hinzugefügt`, () => {
       S.strains.push({ id, name, thc: num($('#eThc').value) || 0, cbd: num($('#eCbd').value) || 0, grams, price: total > 0 ? total / grams : 0 });
       S.strainId = id; // ready to log right away
@@ -1000,7 +1065,7 @@ function restock(s) {
   openEdit(`${s.name} nachfüllen`, `<input id="eGrams" inputmode="decimal" placeholder="Gramm" aria-label="Gramm">
     ${on('costs') ? '<input id="ePrice" inputmode="decimal" placeholder="Preis gesamt € (optional)" aria-label="Preis gesamt in Euro">' : ''}`, () => {
     const x = num($('#eGrams').value), p = priceIn();
-    if (!(x > 0)) return alert('Bitte eine Menge in Gramm angeben.'), false;
+    if (!(x > 0)) return bad('#eGrams', 'Bitte eine Menge in Gramm angeben.');
     withUndo(`${g(x)} ${s.name} nachgefüllt`, () => {
       s.price = (s.grams * (s.price || 0) + (p > 0 ? p : x * (s.price || 0))) / (s.grams + x); // weighted average price
       s.grams = r3(s.grams + x);
@@ -1012,7 +1077,8 @@ function editStrain(s) {
   const shownG = n(s.grams), shownP = s.price ? n(s.price) : '';
   openEdit('Sorte bearbeiten', strainFields(s, shownG, shownP), () => {
     const name = $('#eName').value.trim(), grams = keep('#eGrams', s.grams, shownG);
-    if (!name || !(grams >= 0)) return alert('Bitte Name und Bestand angeben.'), false;
+    if (!name) return bad('#eName', 'Bitte einen Namen angeben.');
+    if (!(grams >= 0)) return bad('#eGrams', 'Bitte den Bestand in Gramm angeben.');
     const thc = num($('#eThc').value) || 0;
     withUndo('Sorte gespeichert', () => {
       Object.assign(s, { name, thc, cbd: num($('#eCbd').value) || 0, grams: r3(grams),
@@ -1024,10 +1090,10 @@ function editStrain(s) {
 }
 
 function logUse() {
-  const s = S.strains.find(s => s.id === +$('#strain').value), x = num($('#use').value);
-  if (!s) return;
-  if (!(x > 0)) return alert('Bitte eine Menge in Gramm angeben.');
-  if (x > s.grams + 1e-9) return alert(`Im Bestand sind nur noch ${g(s.grams)} ${s.name}.`);
+  const s = S.strains.find(s => s.id === +$('#strain').value), x = num($('#use').value), prev = S.logs.at(-1);
+  if (!s || prev && Date.now() - prev.id < 600 && prev.strainId === s.id && prev.grams === x) return; // a double tap logs once
+  if (!(x > 0)) return bad('#use', 'Bitte eine Menge in Gramm angeben.', '#logErr');
+  if (x > s.grams + 1e-9) return bad('#use', `Im Bestand sind nur noch ${g(s.grams)} ${s.name}.`, '#logErr');
   const date = today(), endsPause = on('pause') && S.pause && date >= S.pause.start && date < S.pause.end;
   withUndo(`${g(x)} erfasst${endsPause ? ' · Pausenziel beendet' : ''}`, () => {
     s.grams = r3(s.grams - x);
@@ -1035,6 +1101,7 @@ function logUse() {
     if (S.pause && date >= S.pause.start) S.pause = null; // goal broken or already reached
   });
   fillAmount();
+  $('#use').blur(); // closes the keyboard, so the new entry and the undo are in view
 }
 
 function editLog(l) {
@@ -1044,8 +1111,8 @@ function editLog(l) {
       <label class="field"><span>Datum</span><input type="date" id="eDate" value="${l.date}"></label></div>
     ${forms.length > 1 ? `<div class="seg" id="eForm">${forms.map(f => `<button type="button" data-f="${f}" class="${f === lf ? 'on' : ''}">${f}</button>`).join('')}</div>` : ''}`, () => {
     const x = keep('#eGrams', l.grams, shownG);
-    if (!(x > 0)) return alert('Bitte eine Menge in Gramm angeben.'), false;
-    if (s && x - l.grams > s.grams + 1e-9) return alert(`Im Bestand sind nur noch ${g(s.grams)} ${s.name}.`), false;
+    if (!(x > 0)) return bad('#eGrams', 'Bitte eine Menge in Gramm angeben.');
+    if (s && x - l.grams > s.grams + 1e-9) return bad('#eGrams', `Im Bestand sind nur noch ${g(s.grams)} ${s.name}.`);
     withUndo('Eintrag gespeichert', () => {
       if (s) s.grams = r3(s.grams + l.grams - x);
       Object.assign(l, { grams: x, date: $('#eDate').value || l.date, form: $('#eForm .on')?.dataset.f || lf });
@@ -1132,7 +1199,10 @@ function lockAlt() {
   $('#lockAlt').innerHTML = pinMode !== 'unlock' ? 'Abbrechen' : bioKey() ? FACE : 'Vergessen';
   $('#lockAlt').setAttribute('aria-label', bioKey() ? 'Mit Face ID oder Touch ID entsperren' : $('#lockAlt').textContent);
 }
-function closeLock() { const was = pinMode; pinMode = null; $('#lock').hidden = true; if (was === 'unlock') playRing(); }
+function closeLock() {
+  const was = pinMode; pinMode = null; $('#lock').hidden = true;
+  if (was === 'unlock') { anim(document.body, [{ opacity: 0 }, {}], 250); playRing(); } // unlocked: the app fades in
+}
 function dots() { $('#dots').innerHTML = [0, 1, 2, 3].map(i => `<span class="${i < pinBuf.length ? 'on' : ''}"></span>`).join(''); }
 
 $('#pad').onclick = async e => {
