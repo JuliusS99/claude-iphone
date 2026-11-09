@@ -179,6 +179,21 @@
   /* forms with amount and switch in one row */
   #amounts .line > span:first-child { flex: 1; }
   #amounts .line.off .amt { opacity: .35; }
+  /* motion: short, ease-out, off with "Bewegung reduzieren" */
+  .meter > div { transition: width .6s cubic-bezier(.2,.8,.2,1); }
+  .bar { transform-origin: bottom; } .hbar > div > div { transform-origin: left; }
+  .primary, .secondary, .chips button, .seg button, .days button, .addrow, button.cal-d, .tap { transition: transform .15s, opacity .15s; }
+  .primary:active, .secondary:active, .chips button:active, .seg button:active, .days button:active, .addrow:active, button.cal-d:active { transform: scale(.96); }
+  .addrow:active { opacity: .7; }
+  dialog[open] { animation: sheet-in .34s cubic-bezier(.2,.8,.2,1); }
+  dialog[open]::backdrop { animation: fade-in .34s; }
+  dialog.out { animation: sheet-out .2s ease-in forwards; }
+  dialog.out::backdrop { animation: fade-out .2s forwards; }
+  @keyframes sheet-in { from { opacity: 0; transform: translateY(56px); } }
+  @keyframes sheet-out { to { opacity: 0; transform: translateY(56px); } }
+  @keyframes fade-in { from { opacity: 0; } }
+  @keyframes fade-out { to { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after, ::backdrop { animation: none !important; transition: none !important; } }
 
 
   nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: flex; justify-content: center;
@@ -468,6 +483,47 @@ let month = today().slice(0, 7), shownDay = today();
 
 function save() { localStorage.setItem(KEY, JSON.stringify(S)); hideToast(); render(); }
 
+// Motion. Everything is skipped with "Bewegung reduzieren" (Bedienungshilfen).
+const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const EASE = 'cubic-bezier(.2,.8,.2,1)', REVEAL = [{ opacity: 0, transform: 'translateY(-6px)' }, {}];
+const anim = (el, frames, o) => el && !calm() && el.animate(frames, { easing: EASE, fill: 'backwards', ...(typeof o === 'number' ? { duration: o } : o) });
+const cssVar = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+// counts a number shown in el from `from` to `to`
+function tween(el, from, to, fmt, ms = 700) {
+  cancelAnimationFrame(el._raf);
+  if (calm() || from === to) return el.textContent = fmt(to);
+  const t0 = performance.now();
+  const step = now => { const k = Math.min((now - t0) / ms, 1); el.textContent = fmt(from + (to - from) * (1 - (1 - k) ** 3));
+    if (k < 1 && el.isConnected) el._raf = requestAnimationFrame(step); };
+  step(t0);
+}
+// the ring fills and the number counts up; a milestone reached today glows once and the gradient sweeps around
+function playRing() {
+  const rg = $('#streak .ring');
+  if (!rg || calm() || $('section[data-tab=heute]').hidden) return;
+  anim(rg.querySelector('.ring-val'), [{ strokeDashoffset: RING + 'px' }, {}], 1000);
+  const num = rg.querySelector('.ring-num');
+  tween(num, 0, +num.textContent, Math.round, 1000);
+  if (!$('#streak .ms-hit')) return;
+  const glow = `drop-shadow(0 0 12px ${cssVar('--chart-top')})`, none = 'drop-shadow(0 0 0 transparent)';
+  rg.querySelector('animateTransform').beginElementAt(.9);
+  anim(rg.querySelector('svg'), [{ filter: none }, { filter: glow }, { filter: none }], { duration: 1400, delay: 900, easing: 'ease-in-out' });
+  anim($('#streak .ms-hit'), [{ opacity: 0, transform: 'translateY(6px)' }, {}], { duration: 500, delay: 900 });
+}
+function growBars() {
+  $$('#chart .bar, #patterns .bar').forEach((b, i) => anim(b, [{ transform: 'scaleY(0)' }, {}], { duration: 600, delay: i % 7 * 40 }));
+  $$('#patterns .hbar > div > div').forEach((b, i) => anim(b, [{ transform: 'scaleX(0)' }, {}], { duration: 600, delay: i * 50 }));
+}
+// a removed row folds away before the list is redrawn
+function collapse(el, then) {
+  if (el.dataset.leaving) return;
+  el.dataset.leaving = 1;
+  if (calm()) return then();
+  el.style.overflow = 'hidden';
+  el.animate([{ height: el.offsetHeight + 'px' }, { height: 0, paddingTop: 0, paddingBottom: 0, opacity: 0, borderTopColor: 'transparent' }], { duration: 220, easing: EASE, fill: 'forwards' }).onfinish = then;
+}
+let seen = null; // rows of the last render, so new ones (added, or back via undo) can slide in
+
 // Undo: snapshot the state, apply the change, offer to restore for 5 s. Any later save drops the offer.
 let toastTimer, undoSnap = null;
 function withUndo(msg, change) {
@@ -503,8 +559,14 @@ function openEdit(title, html, save, del, okLabel = 'Speichern', keyboard = fals
 }
 $('#editForm').onsubmit = e => {
   const v = e.submitter?.value;
-  if (v === 'ok' && onSave() === false) e.preventDefault();
+  const d = $('#edit');
+  if (d.classList.contains('out')) return e.preventDefault(); // already closing
+  if (v === 'ok' && onSave() === false) return e.preventDefault();
   if (v === 'del') onDel();
+  if (calm()) return;
+  e.preventDefault();
+  d.classList.add('out');
+  setTimeout(() => { d.classList.remove('out'); d.close(v); }, 200);
 };
 // segmented control / star picker inside the dialog
 const pick = (sel, attr) => e => {
@@ -518,6 +580,9 @@ function show(tab) {
   $('#title').textContent = TITLES[tab];
   $('#todayLabel').hidden = tab !== 'heute';
   scrollTo(0, 0);
+  anim($(`[data-tab=${tab}]`), [{ opacity: 0 }, {}], 180);
+  if (tab === 'heute') playRing();
+  if (tab === 'statistik') growBars();
 }
 $('#nav').onclick = e => { const b = e.target.closest('button'); if (b) show(b.dataset.go); };
 
@@ -556,7 +621,9 @@ function render() {
   $('#total').textContent = g(stock);
   const over = b && left < -1e-9;
   $('#heroLabel').textContent = inPause ? 'Pausenziel' : b?.isBreak ? 'Pausentag' : planned ? 'Heute verfügbar · Reduktionsplan' : 'Heute verfügbar';
-  $('#left').textContent = b ? g(Math.max(left, 0)) : '–';
+  const L = $('#left'), leftV = b ? Math.max(left, 0) : null;
+  if (leftV === null || L._v == null) { cancelAnimationFrame(L._raf); L.textContent = b ? g(leftV) : '–'; } else tween(L, L._v, leftV, g);
+  L._v = leftV;
   $('#left').classList.toggle('over', !!over);
   $('#meter').classList.toggle('over', !!over);
   $('#meter').firstChild.style.width = (!b ? 0 : b.isBreak ? (todayG ? 100 : 0) : perDay > 0 ? Math.min(todayG / perDay, 1) * 100 : 0) + '%';
@@ -676,6 +743,10 @@ function render() {
       + (lim <= P.target ? ' Ziel erreicht.' : isFinite(wt) ? ` Ziel ab Woche ${wt + 1}.` : '');
   $('#pinBtn').textContent = S.pin ? 'Entfernen' : 'Einrichten';
   $('#pinBtn').classList.toggle('danger', !!S.pin);
+
+  const key = el => el.dataset.lid ? 'l' + el.dataset.lid : 's' + el.dataset.sid;
+  if (seen) $$('[data-lid], [data-sid]').forEach(el => seen.has(key(el)) || anim(el, REVEAL, 320));
+  seen = new Set([...S.logs.map(l => 'l' + l.id), ...S.strains.map(x => 's' + x.id)]);
 }
 
 // Average price per gram over the strains that have one (0 = unknown).
@@ -686,7 +757,7 @@ const marks = () => S.cleanSince ? [...S.logs, { date: S.cleanSince, grams: 0 }]
 // Progress ring around the streak number, same gradient as the charts.
 const RING = 2 * Math.PI * 70;
 const ring = (part, num, unit) => `<div class="ring"><svg viewBox="0 0 160 160" aria-hidden="true">
-  <defs><linearGradient id="ringG" x1="0" y1="1" x2="1" y2="0"><stop offset="0" style="stop-color:var(--chart-bottom)"/><stop offset="1" style="stop-color:var(--chart-top)"/></linearGradient></defs>
+  <defs><linearGradient id="ringG" x1="0" y1="1" x2="1" y2="0"><stop offset="0" style="stop-color:var(--chart-bottom)"/><stop offset="1" style="stop-color:var(--chart-top)"/><animateTransform attributeName="gradientTransform" type="rotate" from="0 .5 .5" to="360 .5 .5" dur="1.4s" begin="indefinite"/></linearGradient></defs>
   <circle cx="80" cy="80" r="70" class="ring-track"/>
   ${part > 0 ? `<circle cx="80" cy="80" r="70" class="ring-val" stroke-dasharray="${RING}" stroke-dashoffset="${RING * (1 - Math.min(1, part))}"/>` : ''}
   </svg><div><div class="ring-num">${num}</div><div class="ring-unit">${unit}</div></div></div>`;
@@ -697,13 +768,16 @@ function span(d) {
   return `${n} ${n === 1 ? one : many}${rest ? ` und ${rest} ${restU}` : ''}`;
 }
 
+// unchanged markup is left alone, so a render does not cut off the ring animation
+let streakHTML = '';
+const putStreak = h => { if (h !== streakHTML) $('#streak').innerHTML = streakHTML = h; };
 function renderStreak(t, last) {
   const goalsOn = on('pause'), best = longestBreak(marks(), t), P = goalsOn ? S.pause : null;
   const manual = !S.logs.some(l => l.date > (S.cleanSince || '')); // no entry yet that replaces the set start
   const btn = goalsOn || manual ? `<div class="actions">${!goalsOn ? '' : P && t < P.end
     ? '<button class="danger" onclick="endPause()">Pausenziel beenden</button>'
     : `<button onclick="setPause()">${P ? 'Neues Pausenziel' : 'Pausenziel setzen'}</button>`}${manual ? '<button onclick="setCleanSince()">Anpassen</button>' : ''}</div>` : '';
-  if (last === null && !P) { $('#streak').innerHTML = '<p class="empty">Der Zähler startet mit deinem ersten Eintrag. Schon länger konsumfrei? Trag ein, seit wann.</p><div class="actions"><button onclick="setCleanSince()">Konsumfreie Tage eintragen</button></div>'; return; }
+  if (last === null && !P) { putStreak('<p class="empty">Der Zähler startet mit deinem ersten Eintrag. Schon länger konsumfrei? Trag ein, seit wann.</p><div class="actions"><button onclick="setCleanSince()">Konsumfreie Tage eintragen</button></div>'); return; }
   // what consumption looked like before the break: real entries, else the weekly estimate from the dialog
   const lastDate = last ? addDays(t, -last) : null, W = S.weekly;
   const before = lastDate && (dailyAvg(S.logs, lastDate) || (W && (W.eur || W.g) && { cost: (W.eur || (W.g || 0) * pricePerG()) / 7, grams: (W.g || 0) / 7 }));
@@ -716,15 +790,15 @@ function renderStreak(t, last) {
   const savedCell = saved ? [['Gespart', eur(saved)]] : [];
 
   if (P && t < P.start) {
-    $('#streak').innerHTML = `<div class="streak-num">${P.days} <span>Tage Ziel</span></div>
-      <div class="muted small">Die Pause startet morgen.</div>${btn}`;
+    putStreak(`<div class="streak-num">${P.days} <span>Tage Ziel</span></div>
+      <div class="muted small">Die Pause startet morgen.</div>${btn}`);
   } else if (P && t < P.end) {
     const dayN = daysBetween(P.start, t) + 1, rest = P.days - dayN;
-    $('#streak').innerHTML = ring(dayN / P.days, dayN, `von ${P.days} Tagen`)
+    putStreak(ring(dayN / P.days, dayN, `von ${P.days} Tagen`)
       + `<div class="ring-cap">Pausenziel bis ${longDay(addDays(P.end, -1))}</div>`
-      + stats([['Noch', rest ? tage(rest) : 'Letzter Tag'], recordCell, ...savedCell]) + btn;
+      + stats([['Noch', rest ? tage(rest) : 'Letzter Tag'], recordCell, ...savedCell]) + btn);
   } else if (!last) {
-    $('#streak').innerHTML = `<div class="streak-mini"><span>Zähler startet morgen</span>${best ? `<span class="muted">Rekord ${tage(best)}</span>` : ''}</div>${btn}`;
+    putStreak(`<div class="streak-mini"><span>Zähler startet morgen</span>${best ? `<span class="muted">Rekord ${tage(best)}</span>` : ''}</div>${btn}`);
   } else {
     const [goal, label] = nextMilestone(last), reached = MILESTONES.filter(([d]) => d <= last), prev = reached.at(-1)?.[0] || 0;
     // the newest milestone is highlighted for the rest of the day it is first seen
@@ -734,12 +808,12 @@ function renderStreak(t, last) {
       localStorage.setItem(KEY, JSON.stringify(S));
     }
     const fresh = hit && S.ms.start === lastDate && S.ms.d === hit[0] && S.ms.date === t;
-    $('#streak').innerHTML = (fresh ? `<div class="ms-hit">${hit[1]} geschafft</div>` : '') + ring(goalsOn ? (last - prev) / (goal - prev) : 1, last, `${last === 1 ? 'Tag' : 'Tage'} konsumfrei`)
-      + `<div class="ring-cap">${P ? '<span class="accent">Pausenziel erreicht</span> · ' : ''}seit ${longDay(addDays(lastDate, 1))}${last >= 7 ? `<br>Das sind ${span(last)}.` : ''}${notUsed ? `<br>Ca. ${g(notUsed)} nicht konsumiert.` : ''}</div>`
+    putStreak((fresh ? `<div class="ms-hit">${hit[1]} geschafft</div>` : '') + ring(goalsOn ? (last - prev) / (goal - prev) : 1, last, `${last === 1 ? 'Tag' : 'Tage'} konsumfrei`)
+      + `<div class="ring-cap">${P ? '<span class="accent">Pausenziel erreicht</span> · ' : ''}seit ${longDay(addDays(lastDate, 1))}${last >= 7 ? `<br>Das ${/^1 \D+$/.test(span(last)) ? "ist" : "sind"} ${span(last)}.` : ''}${notUsed ? `<br>Ca. ${g(notUsed)} nicht konsumiert.` : ''}</div>`
       + stats([...(goalsOn ? [['Ziel', label]] : []), recordCell, ...savedCell])
       + (reached.length ? `<details class="ms-list"><summary>Erreichte Meilensteine (${reached.length})</summary>
         ${[...reached].reverse().map(([d, l]) => `<div><span>${l}</span><span>${day(addDays(lastDate, d), { day: 'numeric', month: 'long' })}</span></div>`).join('')}</details>` : '')
-      + btn;
+      + btn);
   }
 }
 
@@ -751,6 +825,7 @@ function setPause() {
     if (!(d > 0)) return alert('Bitte eine Anzahl Tage wählen.'), false;
     const t = today(), last = daysSinceLast(marks(), t), start = last === null ? t : last === 0 ? addDays(t, 1) : addDays(t, 1 - last);
     withUndo(`Pausenziel: ${tage(d)}`, () => S.pause = { start, end: addDays(start, d), days: d });
+    playRing();
   }, null, 'Starten');
   $('#editBody').onclick = e => { const b = e.target.closest('[data-days]'); if (b) { $('#eDays').value = b.dataset.days; pick('#eDaysPick', 'data-days')(e); } };
 }
@@ -772,6 +847,7 @@ function setCleanSince() {
     const weekly = { eur: eurIn ? num(eurIn.value) || 0 : S.weekly?.eur || 0, g: gIn ? num(gIn.value) || 0 : S.weekly?.g || 0 };
     if (!(d > 0)) return alert('Bitte ein Datum vor heute oder eine Anzahl Tage eingeben.'), false;
     withUndo(`Konsumfrei: ${tage(d)}`, () => { S.cleanSince = addDays(t, -d); S.opt = S.opt.filter(x => x !== 'pause').concat(goal ? ['pause'] : []); S.weekly = weekly; });
+    playRing();
   }, S.cleanSince && (() => withUndo('Startdatum entfernt', () => delete S.cleanSince)), 'Speichern', true);
   $('#editBody').oninput = e => { // keep date and day count in sync
     if (e.target.id === 'eCleanDate') $('#eClean').value = e.target.value ? daysBetween(e.target.value, t) : '';
@@ -867,12 +943,18 @@ $('#stock').onclick = e => {
 };
 $('#stock').addEventListener('toggle', e => usedOpen = e.target.open, true);
 $('#logs').addEventListener('toggle', e => { const d = e.target.dataset.day; if (d) e.target.open ? openDays.add(d) : openDays.delete(d); }, true);
-$('#cal').onclick = e => { const b = e.target.closest('[data-day]'); if (b) { calDay = calDay === b.dataset.day ? null : b.dataset.day; render(); } };
+document.addEventListener('click', e => {
+  const d = e.target.closest('summary')?.parentElement;
+  if (d && !d.open) [...d.children].forEach(c => c.tagName !== 'SUMMARY' && anim(c, REVEAL, 260));
+});
+document.addEventListener('touchstart', () => {}, { passive: true }); // iOS only shows :active with a touch listener
+$('#cal').onclick = e => { const b = e.target.closest('[data-day]'); if (b) { calDay = calDay === b.dataset.day ? null : b.dataset.day; render();
+  anim($('#cal .sel'), [{ boxShadow: 'inset 0 0 0 2px transparent' }, {}], 220); anim($('#calDay').firstElementChild, REVEAL, 260); } };
 $('#todayLogs').onclick = $('#logs').onclick = $('#calDay').onclick = e => {
   const row = e.target.closest('[data-lid]');
   if (!row) return;
   const l = S.logs.find(x => x.id === +row.dataset.lid);
-  e.target.closest('[data-del]') ? delLog(l) : editLog(l);
+  e.target.closest('[data-del]') ? collapse(row, () => delLog(l)) : editLog(l);
 };
 $('#features').onchange = e => {
   const k = e.target.dataset.feat, list = OPT_IN.includes(k) ? 'opt' : 'off';
@@ -1050,7 +1132,7 @@ function lockAlt() {
   $('#lockAlt').innerHTML = pinMode !== 'unlock' ? 'Abbrechen' : bioKey() ? FACE : 'Vergessen';
   $('#lockAlt').setAttribute('aria-label', bioKey() ? 'Mit Face ID oder Touch ID entsperren' : $('#lockAlt').textContent);
 }
-function closeLock() { pinMode = null; $('#lock').hidden = true; }
+function closeLock() { const was = pinMode; pinMode = null; $('#lock').hidden = true; if (was === 'unlock') playRing(); }
 function dots() { $('#dots').innerHTML = [0, 1, 2, 3].map(i => `<span class="${i < pinBuf.length ? 'on' : ''}"></span>`).join(''); }
 
 $('#pad').onclick = async e => {
@@ -1098,7 +1180,7 @@ document.addEventListener('visibilitychange', () => {
 
 render();
 fillAmount();
-if (S.pin) { openLock('unlock'); tryBio(); }
+if (S.pin) { openLock('unlock'); tryBio(); } else playRing();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
