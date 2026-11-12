@@ -1,6 +1,6 @@
 // node test.js
 const assert = require('node:assert');
-const { parseLabel, budget, dailyAvg, daysSinceLast, activeDays, absorbedMg, addDays, longestBreak, nextMilestone, planLimit, weeksToTarget, patterns } = require('./logic.js');
+const { parseLabel, budget, dailyAvg, daysSinceLast, activeDays, absorbedMg, addDays, longestBreak, nextMilestone, planLimit, weeksToTarget, patterns, supplyRate } = require('./logic.js');
 const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-9, `${a} != ${b}`);
 
 assert.deepStrictEqual(parseLabel('Amnesia Haze\nTHC: 22,5 %\nCBD: <1 %\nInhalt: 10 g'),
@@ -68,5 +68,12 @@ assert.deepStrictEqual(pt.times, [0.2, 0, 0.5, 0]);
 assert.deepStrictEqual(pt.weekdays, [0, 0, 0, 0.3, 0.5, 0.2, 0]);
 assert.strictEqual(pt.timed, 2);
 assert.strictEqual(patterns([{ id: at(2026, 11, 7, 2), date: '2026-11-07', grams: 1 }]).times[3], 1); // 2 am = night
+
+// supplies marked empty: 5 g Nov 1-10 = 0.5 g/day, 2 g in 4 days = 0.5, 6 g in 3 days = 2 (outlier), median 0.5
+assert.strictEqual(supplyRate([]), null);
+const sr = supplyRate([{ grams: 5, price: 10, from: '2026-11-01', to: '2026-11-10' }, { grams: 2, price: 10, from: '2026-11-11', to: '2026-11-14' },
+  { grams: 6, price: 0, from: '2026-11-15', to: '2026-11-17' }]);
+near(sr.grams, 0.5); near(sr.cost, 5); assert.strictEqual(sr.n, 3);
+near(supplyRate([{ grams: 1, from: '2026-11-01', to: '2026-11-01' }, { grams: 3, from: '2026-11-01', to: '2026-11-01' }]).grams, 2); // even count, same day = 1 day
 
 console.log('ok');

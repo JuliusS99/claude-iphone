@@ -177,6 +177,7 @@
   .mini-stars .on { fill: var(--accent); stroke: var(--accent); }
   .strain .right { display: flex; flex-direction: column; align-items: flex-end; }
   .strain .right button { min-height: 44px; margin: -8px 0 -14px; padding-left: 16px; font-size: .882rem; }
+  .strain .acts { display: flex; } .strain .acts .muted { color: var(--muted); }
   .used summary { min-height: 48px; display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: .882rem; cursor: pointer; border-top: 1px solid var(--line); list-style: none; }
   .used summary::-webkit-details-marker { display: none; }
   /* spacing on the fold itself, not on its summary, so opening and closing can animate its height */
@@ -463,7 +464,7 @@ const KEY = 'kontingent';
 const $ = q => document.querySelector(q);
 const $$ = q => document.querySelectorAll(q);
 let S = JSON.parse(localStorage.getItem(KEY) || 'null') || {};
-S = { strains: [], logs: [], until: '', breaks: [], pin: '', form: 'Joint', forms: Object.keys(FORMS), off: [], opt: [], ...S };
+S = { strains: [], logs: [], empties: [], until: '', breaks: [], pin: '', form: 'Joint', forms: Object.keys(FORMS), off: [], opt: [], ...S };
 S.off = S.off.filter(x => x !== 'goals'); // switch of an earlier version
 // Optional parts of the app. Most are on until switched off; OPT_IN ones are off until switched on.
 const OPT_IN = ['pause'];
@@ -647,7 +648,7 @@ function render() {
   const todayG = sum(todays);
   const pause = on('streak') && on('pause') ? S.pause : null; // the pause goal lives in the streak card
   const b = budget(stock, todayG, t, until, S.breaks, pause);
-  const avg = dailyAvg(S.logs, t);
+  const avg = dailyAvg(S.logs, t), rate = supplyRate(S.empties), use = avg || rate; // use: logged average, else estimate from empty supplies
   const last = daysSinceLast(marks(), t);
   const lim = planLimit(S.plan, t), planned = b && lim !== null && lim < b.perDay;
   const perDay = b ? (planned ? lim : b.perDay) : 0, left = b ? (b.isBreak ? 0 : perDay) - todayG : 0;
@@ -682,7 +683,7 @@ function render() {
     : b.isBreak ? 'Heute ist ein geplanter Pausentag.'
     : todayG ? `${g(todayG)} von ${g(perDay)} erfasst` : 'Heute noch nichts erfasst';
   $('#perDay').textContent = b ? g(perDay) : '–';
-  const runDays = avg && avg.grams > 0 ? Math.floor(stock / avg.grams) : null;
+  const runDays = use && use.grams > 0 ? Math.floor(stock / use.grams) : null;
   $('#stockWarn').hidden = !S.strains.length || !(stock <= 0 || (runDays !== null && runDays <= 5));
   $('#stockWarn').textContent = stock <= 0 ? 'Dein Bestand ist leer.'
     : runDays === 0 ? 'Bei deinem Tempo reicht der Bestand nur noch heute.'
@@ -717,25 +718,26 @@ function render() {
   $('#stockTotal').textContent = g(stock);
   $('#stockValueL').textContent = on('costs') ? 'Wert' : 'Sorten';
   $('#stockValue').textContent = on('costs') ? eur(S.strains.reduce((a, s) => a + s.grams * (s.price || 0), 0)) : S.strains.filter(s => s.grams > 0).length;
-  $('#runout').textContent = avg && avg.grams > 0 && stock > 0
-    ? day(addDays(t, Math.floor(stock / avg.grams)), { day: 'numeric', month: 'short' }) : '–';
+  $('#runout').textContent = use && use.grams > 0 && stock > 0
+    ? day(addDays(t, Math.floor(stock / use.grams)), { day: 'numeric', month: 'short' }) : '–';
   // Bestand: one compact row per strain; used-up strains folded away (kept for rating and restocking)
   const strainRow = s => `<div class="item strain tap" data-sid="${s.id}">
       <div class="grow"><div class="name-row"><span class="name">${esc(s.name)}</span>${on('rating') && s.rating ? miniStars(s.rating) : ''}</div>
         <div class="muted small">THC ${n(s.thc)} % · CBD ${n(s.cbd)} %${s.price && on('costs') ? ' · ' + eur(s.price) + '/g' : ''}</div></div>
-      <div class="right"><div class="amount">${s.grams > 0 ? g(s.grams) : 'leer'}</div><button data-restock>Nachfüllen</button></div></div>`;
+      <div class="right"><div class="amount">${s.grams > 0 ? g(s.grams) : 'leer'}</div><div class="acts">${s.grams > 0 ? '<button class="muted" data-empty>Leer</button>' : ''}<button data-restock>Nachfüllen</button></div></div></div>`;
   const full = S.strains.filter(s => s.grams > 0), used = S.strains.filter(s => s.grams <= 0);
   $('#stock').innerHTML = full.map(strainRow).join('')
     + (used.length ? `<details class="used"${usedOpen ? ' open' : ''}><summary>Aufgebraucht (${used.length})</summary>${used.map(strainRow).join('')}</details>` : '')
     || '<p class="empty">Noch keine Sorte erfasst.</p>';
 
   // Statistik: Tagesbedarf
-  $('#avgGrams').textContent = avg ? g(avg.grams) : '–';
+  $('#avgGrams').textContent = use ? g(use.grams) : '–';
   $('#avgCostL').textContent = on('costs') ? 'Kosten' : 'Pro Woche';
-  $('#avgCost').textContent = !avg ? '–' : on('costs') ? eur(avg.cost) : g(avg.grams * 7);
-  $('#avgMonth').textContent = !avg ? '–' : on('costs') ? eur(avg.cost * 30) : g(avg.grams * 30);
-  const diff = avg && b && perDay > 0 ? Math.round((avg.grams / perDay - 1) * 100) : null;
-  $('#avgNote').textContent = !avg ? 'Erscheint nach dem ersten Eintrag.'
+  $('#avgCost').textContent = !use ? '–' : on('costs') ? eur(use.cost) : g(use.grams * 7);
+  $('#avgMonth').textContent = !use ? '–' : on('costs') ? eur(use.cost * 30) : g(use.grams * 30);
+  const diff = use && b && perDay > 0 ? Math.round((use.grams / perDay - 1) * 100) : null;
+  $('#avgNote').textContent = !use ? 'Erscheint nach dem ersten Eintrag. Ohne Erfassen: Tippe im Bestand bei einer Sorte auf „Leer“, sobald sie aufgebraucht ist.'
+    : !avg ? `Geschätzt aus ${rate.n === 1 ? 'einer aufgebrauchten Sorte' : `${rate.n} aufgebrauchten Sorten (Median)`}: Menge geteilt durch die Tage bis leer.`
     : `Durchschnitt pro Tag über die letzten ${avg.days} ${avg.days === 1 ? 'Tag' : 'Tage'}.`
       + (diff === null ? '' : diff > 0 ? ` Du liegst ${diff} % über deinem Budget.` : ` Du liegst ${-diff} % unter deinem Budget.`);
 
@@ -989,6 +991,7 @@ $('#stock').onclick = e => {
   if (!row) return;
   const s = S.strains.find(x => x.id === +row.dataset.sid);
   if (e.target.closest('[data-restock]')) restock(s);
+  else if (e.target.closest('[data-empty]')) markEmpty(s);
   else editStrain(s);
 };
 $('#stock').addEventListener('toggle', e => usedOpen = e.target.open, true);
@@ -1049,7 +1052,7 @@ function addStrain() {
     if (!name) return bad('#eName', 'Bitte einen Namen angeben.');
     if (!(grams > 0)) return bad('#eGrams', 'Bitte die Menge in Gramm angeben.');
     withUndo(`${name} hinzugefügt`, () => {
-      S.strains.push({ id, name, thc: num($('#eThc').value) || 0, cbd: num($('#eCbd').value) || 0, grams, price: total > 0 ? total / grams : 0 });
+      S.strains.push({ id, name, thc: num($('#eThc').value) || 0, cbd: num($('#eCbd').value) || 0, grams, price: total > 0 ? total / grams : 0, from: today(), bought: grams });
       S.strainId = id; // ready to log right away
     });
   }, null, 'Hinzufügen', true);
@@ -1068,9 +1071,36 @@ function restock(s) {
     if (!(x > 0)) return bad('#eGrams', 'Bitte eine Menge in Gramm angeben.');
     withUndo(`${g(x)} ${s.name} nachgefüllt`, () => {
       s.price = (s.grams * (s.price || 0) + (p > 0 ? p : x * (s.price || 0))) / (s.grams + x); // weighted average price
+      if (s.grams <= 0) Object.assign(s, { from: today(), bought: x }); else s.bought = r3(bought(s) + x); // a new supply starts when it was empty
       s.grams = r3(s.grams + x);
     });
   }, null, 'Hinzufügen', true);
+}
+
+// The current supply of a strain: since when, how much. Strains from before this feature: added date, stock plus what was logged since.
+const since = s => s.from || iso(new Date(s.id));
+const bought = s => s.bought ?? r3(s.grams + sum(S.logs.filter(l => l.strainId === s.id && l.date >= since(s))));
+// For people who do not log: say when a strain ran out, the app works out the use per day from it.
+function markEmpty(s) {
+  const t = today();
+  openEdit(`${s.name} ist leer`, `<div class="row"><label class="field"><span>Gekauft am</span><input type="date" id="eFrom" max="${t}" value="${since(s)}"></label>
+      <label class="field"><span>Leer am</span><input type="date" id="eTo" max="${t}" value="${t}"></label></div>
+    <label class="field"><span>Menge in g</span><input id="eGot" inputmode="decimal" value="${n(bought(s))}"></label>
+    <p class="hint" id="eRate" style="margin:0 2px 14px"></p>`, () => {
+    const from = $('#eFrom').value, to = $('#eTo').value, grams = num($('#eGot').value);
+    if (!from) return bad('#eFrom', 'Bitte angeben, wann du die Sorte gekauft hast.');
+    if (!to || to < from) return bad('#eTo', 'Bitte ein Datum ab dem Kauf angeben.');
+    if (!(grams > 0)) return bad('#eGot', 'Bitte die Menge in Gramm angeben.');
+    withUndo(`${s.name} leer · ca. ${g(grams / (daysBetween(from, to) + 1))} pro Tag`, () => {
+      S.empties.push({ name: s.name, grams, price: s.price || 0, from, to });
+      s.grams = 0; delete s.from; delete s.bought;
+      if (S.strainId === s.id) S.strainId = null;
+    });
+  }, null, 'Speichern');
+  const hint = () => { const from = $('#eFrom').value, to = $('#eTo').value, x = num($('#eGot').value), d = from && to >= from ? daysBetween(from, to) + 1 : 0;
+    $('#eRate').textContent = d && x > 0 ? `${g(x)} in ${d} ${d === 1 ? 'Tag' : 'Tagen'}: ca. ${g(x / d)} pro Tag. Aus allen aufgebrauchten Sorten berechnet die App den Median als deinen Tagesbedarf.` : ''; };
+  $('#editBody').oninput = hint;
+  hint();
 }
 
 function editStrain(s) {

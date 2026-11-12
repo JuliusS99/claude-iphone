@@ -98,10 +98,20 @@ function patterns(logs) {
   return { times, weekdays, timed };
 }
 
+// Without logging: supplies marked empty { grams, price, from, to } (both days count).
+// Typical use per day = median of their daily rates, so one odd supply does not skew it. Last 10 supplies.
+function supplyRate(empties) {
+  const es = (empties || []).slice(-10);
+  if (!es.length) return null;
+  const med = a => { a = [...a].sort((x, y) => x - y); const m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; };
+  const days = e => daysBetween(e.from, e.to) + 1;
+  return { n: es.length, grams: med(es.map(e => e.grams / days(e))), cost: med(es.map(e => e.grams * (e.price || 0) / days(e))) };
+}
+
 // Next streak goal: [days, label]
 const MILESTONES = [[1, '1 Tag'], [3, '3 Tage'], [7, '1 Woche'], [14, '2 Wochen'], [30, '1 Monat'],
   [60, '2 Monate'], [90, '3 Monate'], [180, '6 Monate'], [365, '1 Jahr']];
 const nextMilestone = days => MILESTONES.find(([d]) => d > days)
   || (y => [y * 365, `${y} Jahre`])(Math.ceil((days + 1) / 365));
 
-if (typeof module !== 'undefined') module.exports = { parseLabel, budget, num, dailyAvg, daysSinceLast, activeDays, absorbedMg, addDays, longestBreak, nextMilestone, planLimit, weeksToTarget, patterns };
+if (typeof module !== 'undefined') module.exports = { parseLabel, budget, num, dailyAvg, daysSinceLast, activeDays, absorbedMg, addDays, longestBreak, nextMilestone, planLimit, weeksToTarget, patterns, supplyRate };
